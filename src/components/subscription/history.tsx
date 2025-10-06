@@ -7,7 +7,7 @@ export const History = () => {
         <div className="mt-5 mb-5">
           <h1 className="text-xl font-bold">History</h1>
           <p className="text-sm">
-            Save your history as JSON, or import someone else's. Importing will
+            Save your history as JSON, or import someone else. Importing will
             NOT delete existing messages
           </p>
         </div>

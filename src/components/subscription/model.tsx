@@ -34,7 +34,7 @@ const ModelCard = () => {
         </div>
         {/* Description */}
         <p className="text-muted-foreground mb-4 text-xs font-semibold">
-          Google's flagship model, known for speed and accuracy (and also web
+          Google{"'"}s flagship model, known for speed and accuracy (and also web
           search!).
         </p>
 
@@ -82,7 +82,7 @@ const Models = () => {
       <div className="my-8">
         <h1 className="text-xl font-bold">Available Models</h1>
         <p className="text-muted-foreground">
-          Choose which models appear in your model selector. This won't affect
+          Choose which models appear in your model selector. This won{"'"}t affect
           existing conversations.
         </p>
       </div>

@@ -39,6 +39,7 @@ import { T3Chat } from "../svgs/t3chat";
 import type { User } from "@prisma/client";
 import { useSession } from "next-auth/react";
 import { Share, ShareIcon } from "lucide-react";
+import Image from "next/image";
 
 const giest = Geist({
   display: "swap",
@@ -338,7 +339,7 @@ export function UIStructure() {
         <SidebarFooter className="bg-background absolute bottom-0 z-[70] h-20 w-full px-4 py-3">
           {user && (
             <div className="flex items-center space-x-3">
-              <img
+              <Image
                 src={user.image ?? "/default-avatar.png"}
                 alt={user.name ?? "User"}
                 className="h-10 w-10 rounded-full object-cover"

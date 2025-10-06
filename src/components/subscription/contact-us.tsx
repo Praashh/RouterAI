@@ -90,7 +90,7 @@ export const ContactUsPage = () => {
     <div className="bg-background mx-auto w-full max-w-4xl">
       {/* Header */}
       <div className="mt-5 mb-3">
-        <h1 className="mb-2 text-2xl font-bold">We're here to help!</h1>
+        <h1 className="mb-2 text-2xl font-bold">We are here to help!</h1>
       </div>
 
       {/* Contact Cards */}

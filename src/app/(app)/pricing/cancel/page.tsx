@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ReceiptXIcon } from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
 
 export default function Cancel() {
   return (
@@ -22,7 +23,7 @@ export default function Cancel() {
         </div>
 
         <Button variant="outline" className="h-12 w-40" asChild>
-          <a href="/">Go to Home</a>
+          <Link href="/">Go to Home</Link>
         </Button>
       </div>
     </div>

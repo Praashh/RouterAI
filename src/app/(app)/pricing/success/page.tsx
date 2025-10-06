@@ -4,6 +4,7 @@ import { auth } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ShieldCheckIcon } from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
 
 export default async function Success() {
   const session = await auth();
@@ -30,7 +31,7 @@ export default async function Success() {
         </div>
 
         <Button variant="outline" className="h-12 w-40" asChild>
-          <a href="/">Go to Home</a>
+          <Link href="/">Go to Home</Link>
         </Button>
       </div>
     </div>

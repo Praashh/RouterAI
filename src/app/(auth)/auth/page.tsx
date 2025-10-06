@@ -27,7 +27,7 @@ function LoginPage() {
             </span>
           </div>
           <p className="text-foreground text-center">
-            Sign in below (we'll increase your message limits if you do 😉)
+            Sign in below (we{"'"}ll increase your message limits if you do 😉)
           </p>
         </div>
         <Button

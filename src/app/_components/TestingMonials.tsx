@@ -94,7 +94,6 @@ const TestimonialsSection: React.FC = () => {
                 className="text-center"
               >
                 {/* Stars */}
-                {/* eslint-disable-next-line @typescript-eslint/no-unsafe-member-access */}
                 <div className="mb-6 flex justify-center">
                   {[...Array(testimonials[currentIndex]?.rating)].map(
                     (_, i) => (

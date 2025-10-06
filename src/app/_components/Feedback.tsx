@@ -60,7 +60,7 @@ export const Feedback = () => {
                     Share Your Feedback
                   </h1>
                   <p className="text-muted-foreground leading-relaxed">
-                    We'd love to hear your thoughts and suggestions. Your
+                    We would love to hear your thoughts and suggestions. Your
                     feedback helps us improve and create better experiences for
                     everyone.
                   </p>
