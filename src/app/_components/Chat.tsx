@@ -20,7 +20,8 @@ import remarkGfm from "remark-gfm";
 import { Geist_Mono } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { ModelSelector } from "@/components/ui/model-selector";
-import { DEFAULT_MODEL_ID } from "@/models/constants";
+import { DEFAULT_MODEL_ID, getModelById } from "@/models/constants";
+import { useApiKeys } from "@/hooks/use-api-keys";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
@@ -69,6 +70,15 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
   const [query, setQuery] = useState<string>("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [chatId, setChatId] = useState<string>(initialChatId);
+  const { getKey } = useApiKeys();
+
+  const getUserApiKey = useCallback(() => {
+    const modelInfo = getModelById(model);
+    if (modelInfo?.requiresApiKey) {
+      return getKey(modelInfo.provider);
+    }
+    return undefined;
+  }, [model, getKey]);
 
   const {data: chatMessages} = api.chat.getChatMessages.useQuery({
     chatId: chatId,
@@ -271,6 +281,7 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
                 messages: [{ role: "user", content: currentQuery }],
                 model: model,
                 chatId: chatId,
+                userApiKey: getUserApiKey(),
               }),
               signal: abortControllerRef.current?.signal,
             });
@@ -349,6 +360,7 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
           messages: [{ role: "user", content: currentMessage }],
           model: model,
           chatId: chatId,
+          userApiKey: getUserApiKey(),
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -520,8 +532,8 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
                                       padding: "1rem",
                                       backgroundColor:
                                         resolvedTheme === "dark"
-                                          ? "#1a1620"
-                                          : "#f5ecf9",
+                                          ? "#141414"
+                                          : "#f5f5f5",
                                       color:
                                         resolvedTheme === "dark"
                                           ? "#e5e5e5"

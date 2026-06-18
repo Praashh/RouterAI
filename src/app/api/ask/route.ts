@@ -1,20 +1,21 @@
-import { env } from "@/env";
 import { auth } from "@/server/auth";
 import { fetchChatCompletion } from "@/models/service";
 import { DEFAULT_MODEL_ID, getModelById } from "@/models/constants";
 import { db } from "@/server/db";
+
 interface ChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
 }
 
-interface TypeGPTPayload {
+interface ChatPayload {
   messages: ChatMessage[];
   model?: string;
   chatId: string;
+  userApiKey?: string;
 }
 
-interface TypeGPTErrorResponse {
+interface ChatErrorResponse {
   error?: {
     message: string;
     type: string;
@@ -31,8 +32,8 @@ export async function POST(req: Request): Promise<Response> {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const { messages, model = DEFAULT_MODEL_ID, chatId } =
-      (await req.json()) as TypeGPTPayload;
+    const { messages, model = DEFAULT_MODEL_ID, chatId, userApiKey } =
+      (await req.json()) as ChatPayload;
 
     // Save user message
     await db.message.create({
@@ -68,10 +69,11 @@ export async function POST(req: Request): Promise<Response> {
           messages,
           stream: true,
           fallbackToDefaultModel: true,
+          userApiKey,
         });
 
         if (!response.ok) {
-          const errorData = (await response.json()) as TypeGPTErrorResponse;
+          const errorData = (await response.json()) as ChatErrorResponse;
           const errorMessage = `API error: ${response.status} ${JSON.stringify(errorData)}`;
           const encoder = new TextEncoder();
           await writer.write(

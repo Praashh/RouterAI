@@ -15,7 +15,7 @@ interface FeatureCardProps {
 function FeatureCard({ icon, title, description }: FeatureCardProps) {
   return (
     <div className="border-border bg-muted/50 flex flex-col items-start justify-center gap-1 rounded-lg border px-4 py-3">
-      <div className="text-xl text-pink-500">{icon}</div>
+      <div className="text-foreground text-xl">{icon}</div>
       <div className="text-foreground font-semibold">{title}</div>
       <div className="text-muted-foreground text-sm leading-relaxed">
         {description}
@@ -81,7 +81,7 @@ export const Account = () => {
           {features.map((feature) => (
             <FeatureCard key={feature.title} {...feature} />
           ))}
-          <Button className="w-full max-w-sm rounded-lg bg-pink-600 py-3 font-medium text-white hover:bg-pink-700">
+          <Button className="w-full max-w-sm rounded-lg bg-primary py-3 font-medium text-primary-foreground hover:bg-primary/90">
             Upgrade Now
           </Button>
         </div>

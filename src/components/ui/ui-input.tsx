@@ -507,8 +507,8 @@ const UIInput = () => {
                                   padding: "1rem",
                                   backgroundColor:
                                     resolvedTheme === "dark"
-                                      ? "#1a1620"
-                                      : "#f5ecf9",
+                                      ? "#141414"
+                                      : "#f5f5f5",
                                   color:
                                     resolvedTheme === "dark"
                                       ? "#e5e5e5"

@@ -17,10 +17,11 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
-      TYPEGPT_API_KEY: z.string(),
+      GROQ_API_KEY: z.string(),
+      TYPEGPT_API_KEY: z.string().optional(),
       SECRURE_AUTH_SECRET: z.string(),
       WEBHOOK_URL: z.string().url(),
-      TYPEGPT_API_URL: z.string().url(),
+      TYPEGPT_API_URL: z.string().url().optional(),
       TURNSTILE_SITE_KEY: z.string(),
       TURNSTILE_SITE_SECRET: z.string(),
       STRIPE_SECRET_KEY: z.string(),
@@ -50,6 +51,7 @@ export const env = createEnv({
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
+    GROQ_API_KEY: process.env.GROQ_API_KEY,
     TYPEGPT_API_KEY: process.env.TYPEGPT_API_KEY,
     SECRURE_AUTH_SECRET: process.env.SECRURE_AUTH_SECRET,
     WEBHOOK_URL: process.env.WEBHOOK_URL,

@@ -9,7 +9,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        t3: "bg-pink-900 dark:bg-pink-900/40 text-primary-foreground border border-pink-900/50 hover:bg-primary font-bold cursor-pointer",
+        t3: "bg-primary dark:bg-white/10 text-primary-foreground border border-primary/50 hover:bg-primary/90 font-bold cursor-pointer",
         default:
           "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
         destructive:

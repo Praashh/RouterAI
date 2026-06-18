@@ -37,12 +37,7 @@ export default function Hero() {
         </div>
       </div>
       <DashboardImage />
-      <div className="drop-shadow-accent-primary to-primary absolute top-[35rem] left-1/2 z-[-1] h-40 w-[24rem] -translate-x-1/2 rounded-full border bg-gradient-to-br from-pink-700 blur-[4em] drop-shadow-2xl"></div>
-
-      {/* <div className="from-primary/30 drop-shadow-primary relative z-[2] flex h-40 w-[24rem] translate-y-20 items-center justify-center rounded-full border-4 border-pink-300/20 bg-gradient-to-br text-5xl font-bold drop-shadow-2xl backdrop-blur-xl">
-        T3 Chat
-        <div className="drop-shadow-accent-primary absolute top-[0rem] left-1/2 z-[-1] h-40 w-[10rem] -translate-x-1/2 rounded-full border bg-gradient-to-br from-pink-700 to-pink-500 blur-[4em] drop-shadow-2xl"></div>
-      </div> */}
+      <div className="absolute top-[35rem] left-1/2 z-[-1] h-40 w-[24rem] -translate-x-1/2 rounded-full border bg-gradient-to-br from-neutral-700 to-neutral-400 blur-[4em] drop-shadow-2xl"></div>
     </div>
   );
 }
