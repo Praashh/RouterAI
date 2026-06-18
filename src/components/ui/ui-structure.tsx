@@ -342,6 +342,8 @@ export function UIStructure() {
               <Image
                 src={user.image ?? "/default-avatar.png"}
                 alt={user.name ?? "User"}
+                width={40}
+                height={40}
                 className="h-10 w-10 rounded-full object-cover"
               />
               <div className="flex flex-col text-sm text-white">

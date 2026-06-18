@@ -15,7 +15,7 @@ const contactData = [
     icon: Lightbulb,
     title: "Have a cool feature idea?",
     description: "Vote on upcoming features or suggest your own",
-    color: "text-pink-500",
+    color: "text-foreground",
   },
   {
     id: 2,
@@ -37,7 +37,7 @@ const contactData = [
     title: "Want to join the community?",
     description:
       "Come hang out in our Discord! Chat with the team and other users",
-    color: "text-purple-500",
+    color: "text-foreground",
   },
   {
     id: 5,

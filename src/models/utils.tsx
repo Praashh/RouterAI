@@ -6,6 +6,7 @@ import React from "react";
 import { OpenAI } from "@/components/svgs/openai";
 import { StarFourIcon } from "@phosphor-icons/react/dist/ssr";
 import { Anthrophic } from "@/components/svgs/anthropic";
+import { Groq } from "@/components/svgs/groq";
 
 export function getModelProviderIcon(model: Model): React.ReactNode {
   switch (model.provider) {
@@ -15,6 +16,8 @@ export function getModelProviderIcon(model: Model): React.ReactNode {
       return <StarFourIcon className="h-4 w-4 text-blue-500" />; // Google
     case ModelProvider.ANTHROPIC:
       return <Anthrophic className="h-4 w-4 text-orange-100" />; // Anthropic Claude
+    case ModelProvider.GROQ:
+      return <Groq className="h-4 w-4 text-orange-500" />; // Groq
     default:
       return <DiamondIcon className="h-4 w-4 text-gray-500" />; // Default
   }

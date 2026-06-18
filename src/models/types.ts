@@ -7,12 +7,14 @@ export interface Model {
   pricePer1kTokens: number;
   capabilities: ModelCapability[];
   isAvailable?: boolean;
+  requiresApiKey?: boolean;
 }
 
 export enum ModelProvider {
   OPENAI = "openai",
   GOOGLE = "google",
   ANTHROPIC = "anthropic",
+  GROQ = "groq",
 }
 
 export enum ModelCapability {

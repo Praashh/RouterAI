@@ -114,7 +114,7 @@ const TestimonialsSection: React.FC = () => {
 
                 {/* Result Badge */}
                 <div className="glass-card mb-8 inline-block px-6 py-3">
-                  <p className="font-semibold text-purple-300">
+                  <p className="font-semibold text-neutral-300">
                     {testimonials[currentIndex]?.result}
                   </p>
                 </div>

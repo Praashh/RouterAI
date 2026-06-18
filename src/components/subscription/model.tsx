@@ -15,7 +15,7 @@ const ModelCard = () => {
           <div className="flex items-center gap-3">
             {/* Gemini icon */}
             <div className="flex h-8 w-8 items-center justify-center">
-              <div className="h-6 w-6 rotate-45 transform rounded bg-gradient-to-br from-blue-400 to-purple-600"></div>
+              <div className="h-6 w-6 rotate-45 transform rounded bg-gradient-to-br from-neutral-400 to-neutral-700"></div>
             </div>
             <div>
               <h3 className="text-sm font-semibold md:text-lg">

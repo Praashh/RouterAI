@@ -1,5 +1,4 @@
 import { env } from "@/env";
-import type { Model } from "./types";
 import { getModelById } from "./constants";
 import { ModelProvider } from "./types";
 
@@ -15,69 +14,90 @@ interface ChatOptions {
   maxTokens?: number;
   temperature?: number;
   fallbackToDefaultModel?: boolean;
+  userApiKey?: string;
 }
 
-  
-const MODEL_ID_MAPPING: Record<string, string> = {
-  "gpt-3.5-turbo": "gpt-3.5-turbo",
-  "gpt-4o-mini": "gpt-4o-mini",
-  "gemini-2.0-flash": "gpt-3.5-turbo",
-  "anthropic/claude-3.5-sonnet": "anthropic/claude-3.5-sonnet",
-  "claude-3-sonnet-3.7": "claude-3-sonnet-3.7",
-  "claude-3.7": "claude-3.7",
+const PROVIDER_ENDPOINTS: Record<ModelProvider, string> = {
+  [ModelProvider.GROQ]: "https://api.groq.com/openai/v1/chat/completions",
+  [ModelProvider.OPENAI]: "https://api.openai.com/v1/chat/completions",
+  [ModelProvider.GOOGLE]:
+    "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+  [ModelProvider.ANTHROPIC]: "https://api.anthropic.com/v1/messages",
 };
 
-function shouldUseDirectly(modelId: string): boolean {
-  const workingModels = ["gpt-3.5-turbo", "gpt-4o-mini"];
-  return workingModels.includes(modelId);
+function getApiKeyForProvider(
+  provider: ModelProvider,
+  userApiKey?: string,
+): string {
+  if (provider === ModelProvider.GROQ) {
+    return env.GROQ_API_KEY;
+  }
+
+  if (userApiKey) {
+    return userApiKey;
+  }
+
+  throw new Error(
+    `No API key provided for ${provider}. Please add your API key in Settings.`,
+  );
 }
 
-function createRequestBodyForProvider(
+function buildHeaders(
+  provider: ModelProvider,
+  apiKey: string,
+): Record<string, string> {
+  if (provider === ModelProvider.ANTHROPIC) {
+    return {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    };
+  }
+
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${apiKey}`,
+  };
+}
+
+function buildRequestBody(
   provider: ModelProvider,
   options: ChatOptions,
 ): Record<string, unknown> {
   const { messages, stream, maxTokens, temperature } = options;
 
-  const apiModelId = MODEL_ID_MAPPING[options.modelId] ?? options.modelId;
+  if (provider === ModelProvider.ANTHROPIC) {
+    const systemMessage = messages.find((m) => m.role === "system");
+    const nonSystemMessages = messages.filter((m) => m.role !== "system");
 
-  const requestBody: Record<string, unknown> = {
+    return {
+      model: options.modelId.replace("anthropic/", ""),
+      messages: nonSystemMessages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+      ...(systemMessage && { system: systemMessage.content }),
+      max_tokens: maxTokens ?? 4096,
+      stream: stream ?? true,
+    };
+  }
+
+  // OpenAI-compatible (Groq, OpenAI, Google)
+  const body: Record<string, unknown> = {
+    model: options.modelId,
     messages,
     stream: stream ?? true,
-    model: apiModelId,
   };
 
   if (maxTokens) {
-    requestBody.max_tokens = maxTokens;
+    body.max_tokens = maxTokens;
   }
 
   if (temperature !== undefined) {
-    requestBody.temperature = temperature;
+    body.temperature = temperature;
   }
 
-  return requestBody;
-}
-
-function getApiUrlForProvider(provider: ModelProvider): string {
-
-  return "https://fast.typegpt.net/v1/chat/completions";
-}
-
-
-function getErrorMessage(status: number): string {
-  switch (status) {
-    case 503:
-      return "Service unavailable - TypeGPT may not support this model yet";
-    case 522:
-      return "Connection timeout - TypeGPT server took too long to respond";
-    case 429:
-      return "Rate limit exceeded - Too many requests";
-    case 401:
-      return "Unauthorized - Check your API key";
-    case 403:
-      return "Forbidden - You may not have access to this model";
-    default:
-      return `Error code ${status}`;
-  }
+  return body;
 }
 
 export async function fetchChatCompletion(
@@ -89,71 +109,60 @@ export async function fetchChatCompletion(
   }
 
   try {
+    const apiKey = getApiKeyForProvider(model.provider, options.userApiKey);
+    const apiUrl = PROVIDER_ENDPOINTS[model.provider];
+    const headers = buildHeaders(model.provider, apiKey);
+    const requestBody = buildRequestBody(model.provider, options);
 
-    if (shouldUseDirectly(options.modelId)) {
-      const requestBody = createRequestBodyForProvider(model.provider, options);
-      const apiUrl = getApiUrlForProvider(model.provider);
+    console.log(`Requesting model: ${options.modelId} via ${model.provider}`);
 
-      console.log(`Attempting to use model: ${options.modelId}`);
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(requestBody),
+    });
 
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${env.TYPEGPT_API_KEY}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-
-      if (response.ok) {
-        console.log(`Successfully used model: ${options.modelId}`);
-        return response;
-      }
-
-
-      const errorMessage = getErrorMessage(response.status);
-      console.error(
-        `Model ${options.modelId} failed: ${errorMessage} (${response.status})`,
-      );
-
-
-      if (!options.fallbackToDefaultModel) {
-        return response;
-      }
-
-
-      console.warn(`Falling back to gpt-3.5-turbo from ${options.modelId}`);
-    } else if (!options.fallbackToDefaultModel) {
-
-      throw new Error(
-        `Model ${options.modelId} is not supported by TypeGPT at this time`,
-      );
-    } else {
-
-      console.warn(
-        `Model ${options.modelId} is not supported by TypeGPT, falling back to gpt-3.5-turbo`,
-      );
+    if (response.ok) {
+      console.log(`Successfully used model: ${options.modelId}`);
+      return response;
     }
 
+    console.error(
+      `Model ${options.modelId} failed with status ${response.status}`,
+    );
 
-    return fetchChatCompletion({
-      ...options,
-      modelId: "gpt-3.5-turbo",
-      fallbackToDefaultModel: false, 
-    });
-  } catch (error) {
-    console.error("Error fetching chat completion:", error);
-
-
-    if (options.fallbackToDefaultModel && options.modelId !== "gpt-3.5-turbo") {
+    // Fallback to default Groq model
+    if (
+      options.fallbackToDefaultModel &&
+      options.modelId !== "llama-3.3-70b-versatile"
+    ) {
       console.warn(
-        `Model ${options.modelId} failed with error, falling back to gpt-3.5-turbo`,
+        `Falling back to llama-3.3-70b-versatile from ${options.modelId}`,
       );
       return fetchChatCompletion({
         ...options,
-        modelId: "gpt-3.5-turbo",
-        fallbackToDefaultModel: false, 
+        modelId: "llama-3.3-70b-versatile",
+        userApiKey: undefined,
+        fallbackToDefaultModel: false,
+      });
+    }
+
+    return response;
+  } catch (error) {
+    console.error("Error fetching chat completion:", error);
+
+    if (
+      options.fallbackToDefaultModel &&
+      options.modelId !== "llama-3.3-70b-versatile"
+    ) {
+      console.warn(
+        `Model ${options.modelId} failed with error, falling back to llama-3.3-70b-versatile`,
+      );
+      return fetchChatCompletion({
+        ...options,
+        modelId: "llama-3.3-70b-versatile",
+        userApiKey: undefined,
+        fallbackToDefaultModel: false,
       });
     }
 

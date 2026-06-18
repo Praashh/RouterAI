@@ -19,7 +19,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { AlertCircleIcon, CheckCircleIcon, InfoIcon } from "lucide-react";
+import { AlertCircleIcon, CheckCircleIcon, KeyIcon } from "lucide-react";
+import { useApiKeys } from "@/hooks/use-api-keys";
 
 interface ModelSelectorProps {
   value?: string;
@@ -53,7 +54,7 @@ export function ModelSelector({
   };
 
   const selectedModelObj = getModelById(selectedModel);
-
+  const { hasKey } = useApiKeys();
 
   const getModelStatusIcon = (model: Model) => {
     if (model.isAvailable === false) {
@@ -64,38 +65,29 @@ export function ModelSelector({
               <AlertCircleIcon className="h-4 w-4 text-red-500" />
             </TooltipTrigger>
             <TooltipContent>
-              <p>
-                This model is not available in TypeGPT API and will fall back to
-                GPT-3.5
-              </p>
+              <p>Model unavailable</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       );
-    } else if (model.name.includes("Experimental")) {
+    }
+
+    if (model.requiresApiKey) {
+      const hasProviderKey = hasKey(model.provider);
       return (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <InfoIcon className="h-4 w-4 text-yellow-500" />
+              <KeyIcon
+                className={`h-4 w-4 ${hasProviderKey ? "text-green-500" : "text-yellow-500"}`}
+              />
             </TooltipTrigger>
             <TooltipContent>
               <p>
-                This model is experimental and may not be reliable on TypeGPT
+                {hasProviderKey
+                  ? "Using your API key"
+                  : "Requires API key — add in Settings"}
               </p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
-    } else if (model.name.includes("Beta")) {
-      return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <AlertCircleIcon className="h-4 w-4 text-yellow-500" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>This model is in beta and may not be fully reliable</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -109,7 +101,7 @@ export function ModelSelector({
             <CheckCircleIcon className="h-4 w-4 text-green-500" />
           </TooltipTrigger>
           <TooltipContent>
-            <p>This model is fully supported by TypeGPT API</p>
+            <p>Free model powered by Groq</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -135,20 +127,25 @@ export function ModelSelector({
       <SelectContent>
         <SelectGroup>
           <SelectLabel>Models</SelectLabel>
-          {MODELS.map((model) => (
-            <SelectItem
-              key={model.id}
-              value={model.id}
-              disabled={model.isAvailable === false}
-              className={model.isAvailable === false ? "opacity-60" : ""}
-            >
-              <div className="flex items-center gap-2">
-                {showIcons && getModelProviderIcon(model)}
-                <span>{model.name}</span>
-                {getModelStatusIcon(model)}
-              </div>
-            </SelectItem>
-          ))}
+          {MODELS.map((model) => {
+            const isDisabled =
+              model.isAvailable === false ||
+              (model.requiresApiKey && !hasKey(model.provider));
+            return (
+              <SelectItem
+                key={model.id}
+                value={model.id}
+                disabled={isDisabled}
+                className={isDisabled ? "opacity-60" : ""}
+              >
+                <div className="flex items-center gap-2">
+                  {showIcons && getModelProviderIcon(model)}
+                  <span>{model.name}</span>
+                  {getModelStatusIcon(model)}
+                </div>
+              </SelectItem>
+            );
+          })}
         </SelectGroup>
       </SelectContent>
     </Select>

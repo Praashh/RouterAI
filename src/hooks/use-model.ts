@@ -20,7 +20,14 @@ export function useModel({
     }
 
     const storedModel = localStorage.getItem(storageKey);
-    return storedModel ?? initialModel;
+    // If stored model no longer exists, reset to default
+    if (storedModel) {
+      const model = getModelById(storedModel);
+      if (model) {
+        return storedModel;
+      }
+    }
+    return initialModel;
   });
 
   const [model, setModel] = useState<Model | undefined>(() =>

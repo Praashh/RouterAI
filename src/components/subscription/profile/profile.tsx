@@ -47,7 +47,7 @@ export const Profile = ({ image, nickname, name, email, whatDoYouDo, customTrait
           )}
         </div>
         { plan && (
-          <Badge variant="secondary" className="text-white bg-pink-600">
+          <Badge variant="secondary" className="bg-primary text-primary-foreground">
             {plan}
           </Badge>
         )}

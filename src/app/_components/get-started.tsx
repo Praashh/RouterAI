@@ -6,13 +6,7 @@ export const GetStarted = () => {
     <>
       <div className="relative mb-20 h-[25rem] w-full overflow-hidden rounded-3xl">
         <div
-          className="from-accent/20 absolute inset-0 z-0 w-full overflow-hidden rounded-3xl bg-gradient-to-b p-3 opacity-75"
-          style={{
-            backgroundImage: "url('/grain2.png')",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundRepeat: "no-repeat",
-          }}
+          className="absolute inset-0 z-0 w-full overflow-hidden rounded-3xl bg-gradient-to-b from-neutral-200 to-neutral-400 p-3 opacity-75 dark:from-neutral-800 dark:to-neutral-950"
         ></div>
 
         <div className="from-background via-background/50 to-background/40 absolute inset-0 bg-gradient-to-b"></div>

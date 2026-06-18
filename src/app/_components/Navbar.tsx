@@ -37,7 +37,7 @@ export default function Navbar() {
         )}
       >
         <div className="flex items-center gap-2">
-          <div className="from-primary drop-shadow-primary flex size-8 items-center justify-center rounded-xl bg-gradient-to-tr to-pink-500 drop-shadow-md">
+          <div className="flex size-8 items-center justify-center rounded-xl bg-primary drop-shadow-md">
             <ChatCircleIcon weight="bold" className="size-5" />
           </div>
           <h1 className="font-semibold">T3Chat</h1>
