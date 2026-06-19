@@ -22,8 +22,8 @@ function LoginPage() {
         <div className="flex flex-col items-center gap-2">
           <div className="flex items-center gap-2">
             <span className="text-xl font-bold text-white">Welcome to</span>
-            <span className="text-primary-foreground text-2xl font-bold">
-              T3.chat
+            <span className="text-primary text-2xl font-bold">
+              RouterAI
             </span>
           </div>
           <p className="text-foreground text-center">

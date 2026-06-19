@@ -21,7 +21,7 @@ export const Footer = () => {
         </div>
 
        <Link
-          href="https://github.com/Praashh/t3dotgg"
+          href="https://github.com/Praashh/RouterAI"
           target="_blank"
           rel="noopener noreferrer"
           className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-sm transition-colors"
