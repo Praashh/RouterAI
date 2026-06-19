@@ -53,33 +53,19 @@ export default async function SubscriptionPage() {
               plan={user?.subscription?.plan as string}
             />
 
-            {/* Message Usage */}
-            <div className="bg-accent space-y-4 rounded-xl p-4 dark:bg-black">
-              <div className="flex items-center justify-between">
-                <span className="text-foreground font-medium">
-                  Message Usage
-                </span>
-                <span className="text-muted-foreground text-sm">
-                  Resets today at 5:30 AM
-                </span>
-              </div>
+            <div className="space-y-1 pt-8">
+        <h2 className="text-xl font-bold text-white">Danger Zone</h2>
+        <p className="text-muted-foreground text-sm">
+          Permanently delete your account and all associated data.
+        </p>
+        <Button
+          variant="destructive"
+          className="mt-4 rounded-lg bg-red-600 px-6 py-2 font-medium text-white hover:bg-red-700"
+        >
+          Delete Account
+        </Button>
+      </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-foreground">Standard</span>
-                  <span className="text-foreground font-mono">0/20</span>
-                </div>
-                <div className="bg-muted h-2 w-full rounded-full">
-                  <div
-                    className="bg-primary h-2 rounded-full"
-                    style={{ width: "0%" }}
-                  ></div>
-                </div>
-                <p className="text-muted-foreground text-sm">
-                  20 messages remaining
-                </p>
-              </div>
-            </div>
           </div>
 
           {/* Right Column - Tabs Section */}
@@ -87,14 +73,12 @@ export default async function SubscriptionPage() {
             <Tabs defaultValue="account" className="max-w-full overflow-x-auto">
               <div className="no-scrollbar overflow-x-auto">
                 <TabsList className="h-[34px] rounded-lg">
-                  <TabsTrigger className="rounded-md text-xs" value="account">
-                    Account
-                  </TabsTrigger>
+                
                   <TabsTrigger
                     className="rounded-lg text-xs"
-                    value="customisation"
+                    value="account"
                   >
-                    Customisation
+                    Account
                   </TabsTrigger>
                   <TabsTrigger className="rounded-lg text-xs" value="history">
                     History & Sync
@@ -105,21 +89,14 @@ export default async function SubscriptionPage() {
                   <TabsTrigger className="rounded-lg text-xs" value="api-keys">
                     API Keys
                   </TabsTrigger>
-                  <TabsTrigger
-                    className="rounded-lg text-xs"
-                    value="attachments"
-                  >
-                    Attachments
-                  </TabsTrigger>
+              
                   <TabsTrigger className="rounded-lg text-xs" value="contact">
                     Contact
                   </TabsTrigger>
                 </TabsList>
               </div>
-              <TabsContent value="account" className="mt-6">
-                <Account />
-              </TabsContent>
-              <TabsContent value="customisation">
+      
+              <TabsContent value="account">
                 <Customisation />
               </TabsContent>
               <TabsContent value="history">
@@ -131,9 +108,7 @@ export default async function SubscriptionPage() {
               <TabsContent value="api-keys">
                 <APIKeysPage />
               </TabsContent>
-              <TabsContent value="attachments">
-                <AttachmentsPage />
-              </TabsContent>
+           
               <TabsContent value="contact">
                 <ContactUsPage />
               </TabsContent>

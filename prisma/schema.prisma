@@ -90,6 +90,8 @@ model Transaction {
 model Chat {
     id String @id @default(cuid())
     userId String
+    title String?
+    modelId String?
     isSaved Boolean @default(false)
     user User @relation(fields: [userId], references: [id], onDelete: Cascade)
     messages Message[]

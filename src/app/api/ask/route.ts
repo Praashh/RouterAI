@@ -35,14 +35,25 @@ export async function POST(req: Request): Promise<Response> {
     const { messages, model = DEFAULT_MODEL_ID, chatId, userApiKey } =
       (await req.json()) as ChatPayload;
 
+    const userContent = messages[messages.length - 1]?.content ?? "";
+
     // Save user message
     await db.message.create({
       data: {
         chatId,
-        content: messages[messages.length - 1]?.content ?? "",
+        content: userContent,
         role: "USER",
       },
     });
+
+    // Auto-generate title from first user message if chat has no title
+    const chat = await db.chat.findUnique({ where: { id: chatId }, select: { title: true } });
+    if (!chat?.title && userContent) {
+      await db.chat.update({
+        where: { id: chatId },
+        data: { title: userContent.slice(0, 100) },
+      });
+    }
 
     const modelInfo = getModelById(model);
     if (!modelInfo) {
@@ -111,6 +122,11 @@ export async function POST(req: Request): Promise<Response> {
                     content: accumulatedContent,
                     role: "ASSISTANT",
                   },
+                });
+                // Update chat timestamp so sidebar ordering stays correct
+                await db.chat.update({
+                  where: { id: chatId },
+                  data: { updatedAt: new Date() },
                 });
               }
               

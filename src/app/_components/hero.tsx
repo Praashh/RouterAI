@@ -13,19 +13,19 @@ export default function Hero() {
           <div className="bg-primary text-primary size-2 animate-pulse rounded-full" />
           Always up 24/7
         </Badge>
-        <div className="max-w-xl text-center text-4xl font-bold text-balance md:text-5xl">
-          Your Ordinary AI chat app but with better UI/UX
+        <div className="max-w-xl text-center text-5xl font-bold text-balance md:text-5xl">
+          Your Extra-Ordinary AI chat app.
         </div>
         <p className="text-muted-foreground mt-4 max-w-xl text-center text-balance">
-          T3 Chat is a fast , simple and secure AI chat app that is built to
-          make AI accesible to everyone
+          RouterAI is a fast, simple and secure AI chat app that is built to
+          make AI accessible to everyone
         </p>
         <div className="mt-5 flex items-center gap-4">
           <Button className="h-10 w-40 rounded-xl">
-            <Link href="/ask">Chat with T3</Link>
+            <Link href="/ask">Chat Now</Link>
           </Button>
           <Button className="h-10 w-40 rounded-xl" variant="outline">
-            <Link className="flex items-center gap-2" href="/login">
+            <Link className="flex items-center gap-2" href="/#feedback">
               Send Feedback
               <ArrowUpRightIcon weight="bold" />
             </Link>

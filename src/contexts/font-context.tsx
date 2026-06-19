@@ -9,7 +9,7 @@ type FontContextType = {
 
 const FontContext = createContext<FontContextType | undefined>(undefined);
 
-const FONT_STORAGE_KEY = "t3-chat-font-preference";
+const FONT_STORAGE_KEY = "routerai-font-preference";
 
 export const FontProvider = ({ children }: { children: React.ReactNode }) => {
   const [selectedFont, setSelectedFontState] = useState<string>("proxima");

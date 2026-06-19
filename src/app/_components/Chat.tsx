@@ -31,6 +31,7 @@ import { useTheme } from "next-themes";
 import { Globe, Loader2Icon, Paperclip, WrapText } from "lucide-react";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { api } from "@/trpc/react";
+import { useRouter } from "next/navigation";
 
 const geistMono = Geist_Mono({
   subsets: ["latin"],
@@ -71,6 +72,7 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
   const [attachments, setAttachments] = useState<File[]>([]);
   const [chatId, setChatId] = useState<string>(initialChatId);
   const { getKey } = useApiKeys();
+  const utils = api.useUtils();
 
   const getUserApiKey = useCallback(() => {
     const modelInfo = getModelById(model);
@@ -258,8 +260,10 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
       content: currentQuery,
     };
 
+    const updatedMessages = [...messages, userMessage];
+
     setQuery("");
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages(updatedMessages);
     setIsLoading(true);
 
     if (abortControllerRef.current) {
@@ -278,7 +282,7 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                messages: [{ role: "user", content: currentQuery }],
+                messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
                 model: model,
                 chatId: chatId,
                 userApiKey: getUserApiKey(),
@@ -287,6 +291,7 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
             });
 
             await processStream(response, currentQuery);
+            void utils.chat.getAllChats.invalidate();
           } catch (error) {
             if ((error as Error).name !== "AbortError") {
               console.error("Error sending message:", error);
@@ -336,12 +341,11 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
       content: input,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-
     const currentMessage = input.trim();
+    const updatedMessages = [...messages, userMessage];
 
+    setMessages(updatedMessages);
     setInput("");
-
     setIsLoading(true);
 
     if (abortControllerRef.current) {
@@ -357,7 +361,7 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          messages: [{ role: "user", content: currentMessage }],
+          messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
           model: model,
           chatId: chatId,
           userApiKey: getUserApiKey(),
@@ -366,6 +370,8 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
       });
 
       await processStream(response, currentMessage);
+      // Invalidate sidebar so it reflects updated chat
+      void utils.chat.getAllChats.invalidate();
     } catch (error) {
       if ((error as Error).name !== "AbortError") {
         console.error("Error sending message:", error);

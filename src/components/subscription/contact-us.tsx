@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -69,7 +71,7 @@ const ContactCard = ({
   return (
     <Card className="border-border bg-accent/30 hover:bg-accent/50 h-fit max-w-md cursor-pointer p-0 transition-colors">
       <CardContent className="p-0">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4" onClick={() => window.open("https://x.com/10xPraash", "_blank")}>
           <div className={`${color}`}>
             <Icon className="text-primary size-5" />
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DEFAULT_MODEL_ID, MODELS, getModelById } from "@/models/constants";
 import type { Model } from "@/models/types";
 import { getModelProviderIcon } from "@/models/utils";
@@ -55,6 +55,21 @@ export function ModelSelector({
 
   const selectedModelObj = getModelById(selectedModel);
   const { hasKey } = useApiKeys();
+
+  const enabledModelIds = useMemo(() => {
+    if (typeof window === "undefined") return new Set(MODELS.map((m) => m.id));
+    const stored = localStorage.getItem("routerai-enabled-models");
+    if (stored) {
+      try {
+        return new Set(JSON.parse(stored) as string[]);
+      } catch {
+        return new Set(MODELS.map((m) => m.id));
+      }
+    }
+    return new Set(MODELS.map((m) => m.id));
+  }, []);
+
+  const visibleModels = MODELS.filter((m) => enabledModelIds.has(m.id));
 
   const getModelStatusIcon = (model: Model) => {
     if (model.isAvailable === false) {
@@ -127,7 +142,7 @@ export function ModelSelector({
       <SelectContent>
         <SelectGroup>
           <SelectLabel>Models</SelectLabel>
-          {MODELS.map((model) => {
+          {visibleModels.map((model) => {
             const isDisabled =
               model.isAvailable === false ||
               (model.requiresApiKey && !hasKey(model.provider));

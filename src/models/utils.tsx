@@ -1,5 +1,5 @@
 import type { Model } from "./types";
-import { ModelProvider } from "./types";
+import { ModelProvider, ModelCapability } from "./types";
 import { MODELS } from "./constants";
 import { DiamondIcon, StarIcon, CircleIcon } from "lucide-react";
 import React from "react";
@@ -37,7 +37,7 @@ export function isModelCompatibleWithFeature(
   const model = MODELS.find((m) => m.id === modelId);
   if (!model) return false;
 
-  return true;
+  return model.capabilities.includes(feature as ModelCapability);
 }
 
 export function getModelsByProvider(provider: ModelProvider): Model[] {

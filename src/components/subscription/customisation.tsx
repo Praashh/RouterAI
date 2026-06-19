@@ -149,14 +149,14 @@ export const Customisation = () => {
     <div className="bg-background text-foreground">
       <div className="">
         <h1 className="text-foreground my-4 text-2xl font-bold">
-          Customize T3 Chat
+          Customize RouterAI
         </h1>
 
         <div className="space-y-1">
           {/* Name Section */}
           <div>
             <label className="text-foreground mb-1 block text-sm font-medium">
-              What should T3 Chat call you?
+              What should RouterAI call you?
             </label>
             <Input
               type="text"
@@ -188,7 +188,7 @@ export const Customisation = () => {
           {/* Traits Section */}
           <div>
             <label className="text-foreground mb-1 block text-sm font-medium">
-              What traits should T3 Chat have?{" "}
+              What traits should RouterAI have?{" "}
               <span className="text-muted-foreground text-xs">
                 (up to 50, max 100 chars each)
               </span>
@@ -251,7 +251,7 @@ export const Customisation = () => {
           {/* Additional Info Section */}
           <div>
             <label className="text-foreground mb-1 block text-sm font-medium">
-              Anything else T3 Chat should know about you?
+              Anything else RouterAI should know about you?
             </label>
             <Textarea
               placeholder="Interests, values, or preferences to keep in mind"

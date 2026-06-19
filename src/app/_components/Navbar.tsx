@@ -38,16 +38,15 @@ export default function Navbar() {
       >
         <div className="flex items-center gap-2">
           <div className="flex size-8 items-center justify-center rounded-xl bg-primary drop-shadow-md">
-            <ChatCircleIcon weight="bold" className="size-5" />
+            <ChatCircleIcon weight="bold" className="size-5 text-secondary" />
           </div>
-          <h1 className="font-semibold">T3Chat</h1>
+          <h1 className="font-semibold">RouterAI</h1>
         </div>
         <div className="flex items-center gap-5 font-semibold">
-          <Link href="/">Pricing</Link>
-          <Link href="/">Testimonials</Link>
+          <Link href="/#testimonials">Testimonials</Link>
           <Button className="rounded-xl" asChild>
             <Link href="/ask">
-              Chat with T3 <ArrowUpRightIcon weight="bold" />
+              Chat Now <ArrowUpRightIcon weight="bold" />
             </Link>
           </Button>
         </div>

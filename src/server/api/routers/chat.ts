@@ -4,7 +4,11 @@ import { z } from "zod";
 
 export const chatRouter = createTRPCRouter({
   createChat: protectedProcedure
-    .mutation(async ({ ctx }) => {
+    .input(z.object({
+      title: z.string().optional(),
+      modelId: z.string().optional(),
+    }).optional())
+    .mutation(async ({ ctx, input }) => {
       if (!ctx.session.user) {
         return {
           message: "Unauthorised access",
@@ -16,6 +20,8 @@ export const chatRouter = createTRPCRouter({
         const newChat = await db.chat.create({
           data:{
             userId: ctx.session.user.id,
+            title: input?.title,
+            modelId: input?.modelId,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -35,36 +41,67 @@ export const chatRouter = createTRPCRouter({
       }
     }),
 
-  getAllChats: protectedProcedure.query(async ({ ctx }) => {
+  getAllChats: protectedProcedure
+    .input(z.object({
+      search: z.string().optional(),
+      limit: z.number().min(1).max(100).default(50),
+      cursor: z.string().optional(),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      if (!ctx.session.user) {
+        return {
+          message: "Unauthorised access",
+          success: false,
+          chats: [],
+        };
+      }
 
-    if (!ctx.session.user) {
-      return {
-        message: "Unauthorised access",
-        success: false,
-        chats: [],
-      };
-    }
+      const limit = input?.limit ?? 50;
 
-    const chats = await db.chat.findMany({
-      where: {
-        userId: ctx.session.user.id,
-      },
-      select: {
-        id: true,
-        messages: {
-          select: {
-            content: true,
-          },
+      const chats = await db.chat.findMany({
+        where: {
+          userId: ctx.session.user.id,
+          ...(input?.search ? {
+            OR: [
+              { title: { contains: input.search, mode: "insensitive" as const } },
+              { messages: { some: { content: { contains: input.search, mode: "insensitive" as const } } } },
+            ],
+          } : {}),
         },
-        isSaved: true,
-      },
-      orderBy: {
-        updatedAt: "desc",
-      },
-    });
+        select: {
+          id: true,
+          title: true,
+          modelId: true,
+          messages: {
+            select: {
+              content: true,
+            },
+            take: 1,
+            orderBy: {
+              createdAt: "asc",
+            },
+          },
+          isSaved: true,
+          updatedAt: true,
+        },
+        orderBy: {
+          updatedAt: "desc",
+        },
+        take: limit + 1,
+        ...(input?.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+      });
 
-    return chats;
-  }),
+      let nextCursor: string | undefined;
+      if (chats.length > limit) {
+        const nextItem = chats.pop();
+        nextCursor = nextItem?.id;
+      }
+
+      return {
+        chats,
+        nextCursor,
+      };
+    }),
 
   getChatMessages: protectedProcedure
     .input(z.object({

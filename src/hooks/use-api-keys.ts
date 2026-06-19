@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { ModelProvider } from "@/models/types";
 
-const STORAGE_KEY = "t3chat-api-keys";
+const STORAGE_KEY = "routerai-api-keys";
 
 type ProviderKeys = Partial<Record<ModelProvider, string>>;
 

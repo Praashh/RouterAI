@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-T3Chat is an open-source AI chat application built with the T3 stack. It supports multiple LLM providers (OpenAI, Google, Anthropic) routed through a TypeGPT API proxy, with Stripe subscriptions (FREE/PRO tiers), Google OAuth, and real-time streaming responses.
+RouterAI is an open-source AI chat application. It supports multiple LLM providers (OpenAI, Google, Anthropic) with Stripe subscriptions (FREE/PRO tiers), Google OAuth, and real-time streaming responses.
 
 ## Commands
 

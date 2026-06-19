@@ -2,7 +2,6 @@ import { HydrateClient } from "@/trpc/server";
 import Hero from "./_components/hero";
 import Navbar from "./_components/Navbar";
 import { Features } from "@/components/ui/base-feature";
-import PricingSection from "./_components/Prcing";
 import TestimonialsSection from "./_components/TestingMonials";
 import { Feedback } from "./_components/Feedback";
 import { Footer } from "./_components/footer";
@@ -14,7 +13,6 @@ export default async function Home() {
         <Navbar />
         <Hero />
         <Features />
-        <PricingSection />
         <TestimonialsSection />
         <GetStarted />
         <Feedback />

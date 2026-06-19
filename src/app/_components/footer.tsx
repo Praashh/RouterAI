@@ -1,18 +1,34 @@
-import { ChatCircleIcon } from "@phosphor-icons/react/dist/ssr";
+import {
+  ChatCircleIcon,
+  GithubLogoIcon,
+} from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
 
 export const Footer = () => {
   return (
     <>
-      <div className="bg-muted/40 mx-auto mt-20 flex h-40 w-full max-w-6xl items-center justify-center rounded-xl border">
-        <div className="flex items-center gap-2">
-          <div className="flex flex-col items-center">
-            <div className="flex size-8 items-center justify-center rounded-xl bg-primary drop-shadow-md">
-              <ChatCircleIcon weight="bold" className="size-5" />
+      <div className="bg-muted/40 mx-auto mt-20 flex h-40 w-full max-w-6xl items-center justify-between rounded-xl border px-8">
+        <div className="flex items-center gap-3">
+          <div className="flex size-8 items-center justify-center rounded-xl bg-secondary drop-shadow-md">
+            <ChatCircleIcon weight="bold" className="size-5" />
+          </div>
+          <div>
+            <h1 className="font-semibold leading-tight">RouterAI</h1>
+            <div className="text-muted-foreground text-xs">
+              &copy; {new Date().getFullYear()}
             </div>
-            <h1 className="mt-4 font-semibold">T3Chat</h1>
-            <div>Copyright &copy; {new Date().getFullYear()}</div>
           </div>
         </div>
+
+       <Link
+          href="https://github.com/Praashh/t3dotgg"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-sm transition-colors"
+        >
+          <GithubLogoIcon weight="bold" className="size-4" />
+          GitHub
+        </Link>
       </div>
     </>
   );

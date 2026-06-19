@@ -35,7 +35,7 @@ import {
 import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { T3Chat } from "../svgs/t3chat";
+import { RouterAILogo } from "../svgs/t3chat";
 import type { User } from "@prisma/client";
 import { useSession } from "next-auth/react";
 import { Share, ShareIcon } from "lucide-react";
@@ -48,65 +48,71 @@ const giest = Geist({
 
 interface Chat {
   id: string;
+  title: string | null;
+  modelId: string | null;
   updatedAt: Date;
   isSaved: boolean;
-  userId: string;
   messages: {
     content: string;
   }[];
 }
 
 export function UIStructure() {
-  const [chats, setChats] = useState<Chat[]>([]);
   const [hoverChatId, setHoverChatId] = useState<string>("");
-  const { data: chatsData } = api.chat.getAllChats.useQuery();
+  const [searchQuery, setSearchQuery] = useState("");
+  const queryInput = searchQuery ? { search: searchQuery } : {};
+  const { data: chatsData, isLoading: chatsLoading } = api.chat.getAllChats.useQuery(
+    queryInput,
+    { refetchOnWindowFocus: true },
+  );
   const saveChat = api.chat.saveChat.useMutation();
   const removeFromSaved = api.chat.removeFromSaved.useMutation();
   const deleteChat = api.chat.deleteChat.useMutation();
+  const utils = api.useUtils();
   const router = useRouter();
 
-  useEffect(() => {
-    if (chatsData) {
-      setChats(chatsData as unknown as Chat[]);
-    }
-  }, [chatsData]);
+  const chats = (chatsData?.chats ?? chatsData ?? []) as unknown as Chat[];
+
+  const getChatDisplayTitle = (chat: Chat) => {
+    if (chat.title) return chat.title.length > 30 ? chat.title.slice(0, 30) + "..." : chat.title;
+    if (chat.messages[0]?.content) return chat.messages[0].content.slice(0, 30) + "...";
+    return "New Chat";
+  };
 
   const handleSaveChat = (chatId: string) => {
-    try {
-      saveChat.mutate({ chatId: chatId });
-      toast.success("Chat saved successfully");
-      setChats(
-        chats.map((chat) =>
-          chat.id === chatId ? { ...chat, isSaved: true } : chat,
-        ),
-      );
-    } catch (error) {
-      console.error("Error saving chat:", error);
-    }
+    saveChat.mutate({ chatId }, {
+      onSuccess: () => {
+        toast.success("Chat saved successfully");
+        void utils.chat.getAllChats.invalidate();
+      },
+      onError: (error) => {
+        console.error("Error saving chat:", error);
+      },
+    });
   };
 
   const handleRemoveFromSaved = (chatId: string) => {
-    try {
-      removeFromSaved.mutate({ chatId: chatId });
-      toast.success("Chat removed from saved successfully");
-      setChats(
-        chats.map((chat) =>
-          chat.id === chatId ? { ...chat, isSaved: false } : chat,
-        ),
-      );
-    } catch (error) {
-      console.error("Error removing chat from saved:", error);
-    }
+    removeFromSaved.mutate({ chatId }, {
+      onSuccess: () => {
+        toast.success("Chat removed from saved successfully");
+        void utils.chat.getAllChats.invalidate();
+      },
+      onError: (error) => {
+        console.error("Error removing chat from saved:", error);
+      },
+    });
   };
 
   const handleDeleteChat = (chatId: string) => {
-    try {
-      deleteChat.mutate({ chatId: chatId });
-      toast.success("Chat deleted successfully");
-      setChats(chats.filter((chat) => chat.id !== chatId));
-    } catch (error) {
-      console.error("Error deleting chat:", error);
-    }
+    deleteChat.mutate({ chatId }, {
+      onSuccess: () => {
+        toast.success("Chat deleted successfully");
+        void utils.chat.getAllChats.invalidate();
+      },
+      onError: (error) => {
+        console.error("Error deleting chat:", error);
+      },
+    });
   };
 
   const session = useSession();
@@ -120,8 +126,8 @@ export function UIStructure() {
             <div className="flex h-12 w-full flex-col items-center gap-2 rounded-lg">
               <div className="flex w-full items-center gap-2 rounded-lg p-1 text-lg">
                 <SidebarTrigger className="shrink-0" />
-                <div className="dark:text-primary-foreground flex size-4 w-full flex-1 items-center justify-center rounded-lg">
-                  <T3Chat />
+                <div className="text-secondary flex size-4 w-full flex-1 items-center justify-center rounded-lg ml-2">
+                  <RouterAILogo />
                 </div>
                 <span className="size-6"></span>
               </div>
@@ -130,8 +136,7 @@ export function UIStructure() {
                   e.preventDefault();
                   router.push("/ask");
                 }}
-                variant="t3"
-                className="w-full"
+                className="w-full text-secondary bg-primary"
               >
                 New Chat
               </Button>
@@ -143,6 +148,8 @@ export function UIStructure() {
               <MagnifyingGlassIcon className="text-foreground" weight="bold" />
               <Input
                 placeholder="Search for chats"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="rounded-none border-none bg-transparent px-0 py-1 shadow-none ring-0 focus-visible:ring-0 dark:bg-transparent"
               />
             </div>
@@ -155,7 +162,7 @@ export function UIStructure() {
               </Badge>
             </SidebarGroupLabel>
             <SidebarMenu className="mt-2 p-0">
-              {chatsData === undefined
+              {chatsLoading
                 ? // Skeleton loader while loading saved chats
                   Array.from({ length: 4 }).map((_, i) => (
                     <div
@@ -176,7 +183,7 @@ export function UIStructure() {
                           <div className="flex w-full items-center justify-between">
                             <Link href={`/ask/${chat.id}`}>
                               <span className="z-[-1]">
-                                {chat.messages[0]?.content.slice(0, 30)}...
+                                {getChatDisplayTitle(chat)}
                               </span>
                               <div
                                 className={`absolute top-0 right-0 z-[5] h-full w-12 rounded-r-md blur-[2em] ${chat.id === hoverChatId ? "bg-primary" : ""}`}
@@ -241,7 +248,7 @@ export function UIStructure() {
             </SidebarGroupLabel>
 
             <SidebarMenu className="mt-2 w-full p-0">
-              {chatsData === undefined
+              {chatsLoading
                 ? // Skeleton loader while loading saved chats
                   Array.from({ length: 4 }).map((_, i) => (
                     <div
@@ -262,7 +269,7 @@ export function UIStructure() {
                           <div className="flex w-full items-center justify-between">
                             <Link href={`/ask/${chat.id}`}>
                               <span className="z-[-1]">
-                                {chat.messages[0]?.content.slice(0, 30)}
+                                {getChatDisplayTitle(chat)}
                               </span>
                               <div
                                 className={`absolute top-0 right-0 z-[5] h-full w-12 rounded-r-md blur-[2em] ${chat.id === hoverChatId ? "bg-primary" : ""}`}

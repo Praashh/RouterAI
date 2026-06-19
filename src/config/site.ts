@@ -1,39 +1,69 @@
-import type { Metadata } from 'next';
+import type { Metadata } from "next";
 
-const TITLE = 'T3chat - An Open-source, user-friendly fast AI response chat app';
+const TITLE = "RouterAI - Chat with Multiple AI Models in One Place";
 const DESCRIPTION =
-  'T3chat is a platform that allows you to chat with AI, support different LLM, respond very fast, user friendly, have customization, cheap.';
+  "RouterAI is an open-source AI chat app that lets you talk to multiple LLM providers like OpenAI, Google, and Anthropic — all from a single, fast, and customizable interface.";
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL;
 
 export const siteConfig: Metadata = {
-  title: TITLE,
+  title: {
+    default: TITLE,
+    template: "%s | RouterAI",
+  },
   description: DESCRIPTION,
   icons: {
-    icon: '/favicon.ico',
+    icon: "/favicon.ico",
   },
-  applicationName: 'T3chat',
-  creator: 'praash',
-
-  category: 'AI',
+  applicationName: "RouterAI",
+  creator: "praash",
+  category: "AI",
   alternates: {
     canonical: BASE_URL,
   },
   keywords: [
-    'T3chat',
-    'AI',
-    'LLM',
-    'Fast',
-    'User friendly',
-    'Customization',
-    'Cheap',
-    'web3',
-    'blockchain',
-    'open-source',
-    'self-hosted',
-    'self-hosting',
-    'self-host',
-    'self-hosting',
+    "RouterAI",
+    "AI chat",
+    "multi-model AI",
+    "LLM aggregator",
+    "OpenAI",
+    "Google AI",
+    "Anthropic",
+    "chat application",
+    "open-source AI",
+    "self-hosted AI chat",
   ],
+  openGraph: {
+    type: "website",
+    title: TITLE,
+    description: DESCRIPTION,
+    siteName: "RouterAI",
+    url: BASE_URL,
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "RouterAI - Chat with Multiple AI Models",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ["/og.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   metadataBase: new URL(BASE_URL!),
 };

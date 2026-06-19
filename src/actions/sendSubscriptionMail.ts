@@ -11,18 +11,18 @@ export const sendEmailNotification = async (to: string): Promise<EmailResponse> 
     console.log("Sending email to", to);
     const mailOptions = {
       from: {
-        name: "T3Chat",
+        name: "RouterAI",
         address: user,
       },
       to: to,
-      subject: "Thank you for subscribing to T3Chat",
+      subject: "Thank you for subscribing to RouterAI",
       html: `
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thank you for subscribing to T3Chat</title>
+    <title>Thank you for subscribing to RouterAI</title>
     <style type="text/css">
         /* Base styles */
         body, html {
@@ -129,20 +129,20 @@ export const sendEmailNotification = async (to: string): Promise<EmailResponse> 
     <div class="email-container">
         <!-- Header -->
         <div class="header">
-            <a href="https://t3chat.xyz" class="logo">T3CHAT</a>
+            <a href="https://t3chat.xyz" class="logo">ROUTERAI</a>
         </div>
         
         <!-- Content -->
         <div class="content">
-            <h1>Thank you for subscribing to T3Chat!</h1>
-            <p>Thank you for subscribing to T3Chat. We're excited to have you on board.</p>
+            <h1>Thank you for subscribing to RouterAI!</h1>
+            <p>Thank you for subscribing to RouterAI. We're excited to have you on board.</p>
             <p>Your subscription has been successfully created with the following email address:</p>
             
             <div class="highlight">
                 ${to}
             </div>
             
-            <p>With your T3Chat account, you can now access our platform's features and services.</p>
+            <p>With your RouterAI account, you can now access our platform's features and services.</p>
             
             <p>If you didn't request this account, please ignore this email or contact our support team.</p>
             
@@ -153,7 +153,7 @@ export const sendEmailNotification = async (to: string): Promise<EmailResponse> 
         
         <!-- Footer -->
         <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} T3Chat. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} RouterAI. All rights reserved.</p>
             <p>
                 <a href="https://t3chat.xyz">Privacy Policy</a> | 
                 <a href="https://t3chat.xyz">Terms of Service</a>

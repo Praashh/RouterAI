@@ -1,29 +1,25 @@
-# 𝙏3𝙘𝒉𝙖𝒕
+# RouterAI
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2F100xEnginners%2Ft3dotgg&env=DATABASE_URL,BETTER_AUTH_SECRET,BETTER_AUTH_URL,BETTER_AUTH_TRUSTED_ORIGINS,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,GOOGLE_REDIRECT_URI,GITHUB_CLIENT_ID,GITHUB_CLIENT_SECRET&envDescription=For%20more%20info%20on%20setting%20up%20your%20API%20keys%2C%20checkout%20the%20Readme%20below&envLink=https%3A%2F%2Fgithub.com%2F100xEnginners%2Ft3dotgg%2Fblob%2Fmain%2FREADME.md&project-name=t3chat&repository-name=t3chat&redirect-url=t3chat&demo-title=T3chat&demo-description=An%20open%20source%20t3chat%20clone&demo-url=t3chat.xyz)
+An open-source AI chat application that routes your prompts to multiple LLM providers — all in one place.
 
-An Open-Source Version of t3.chat.
+## What is RouterAI?
 
-## What is T3.chat?
+RouterAI is a fast and sleek AI chat application that lets you talk to multiple AI models from different providers (OpenAI, Google, Anthropic) through a single, unified interface.
 
-T3 Chat is a fast and sleek AI chat application.
+## Why RouterAI?
 
-it's "best AI chat app ever made" ~ Theo
-
-## Why T3chat?
-It supports different LLM, respond very fast, user friendly, have customization, cheap.
+It supports different LLMs, responds fast, is user friendly, has customization, and is affordable.
   - ✅ **Open-Source** – No hidden agendas, fully transparent.
   - 🚀 **Developer-Friendly** – Built with extensibility and integrations in mind.
 
 ## Tech Stack
 
-T3 is built with modern and reliable technologies:
+RouterAI is built with modern and reliable technologies:
 
 - **Frontend**: Next.js, TypeScript, TailwindCSS, Shadcn UI
 - **Backend**: tRPC, Prisma ORM
 - **Database**: PostgreSQL
 - **Authentication**: Google OAuth
-- **Overall**: We're using t3 stack 💙
 <!-- - **Testing**: Jest, React Testing Library -->
 
 ## Getting Started
@@ -85,16 +81,16 @@ For more in-depth information on environment variables, please refer to the [Env
      ```
 ### Environment Variables
 
-Copy `.env.example` located in  `.env` in the configure the following variables:
+Copy `.env.example` to `.env` and configure the following variables:
 
 ```env
 # Auth
-AUTH_TRUST_HOST= 
+AUTH_TRUST_HOST=
 AUTH_SECRET=     # Required: Secret key for authentication
 
 # Google OAuth ( Required )
-GOOGLE_CLIENT_ID=      
-GOOGLE_CLIENT_SECRET=  
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 
 # Turnstile ( Required )
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=
@@ -108,25 +104,23 @@ STRIPE_WEBHOOK_SECRET=
 
 # Upstash ( Required )
 UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN = 
+UPSTASH_REDIS_REST_TOKEN =
 
 # Mail ( Optional )
 MAIL_APP_USER =
-MAIL_APP_PASSWORD = 
+MAIL_APP_PASSWORD =
 
-# TypeGPT ( Required )
-NEXT_PUBLIC_TYPEGPT_API_KEY=
-TYPEGPT_API_KEY=
-TYPEGPT_API_URL=
-
-# Discord webhook ( Optinal )
+# Discord webhook ( Optional )
 WEBHOOK_URL
 
 # Database ( Required )
-DATABASE_URL=    
+DATABASE_URL=
+
+# GROQ ( Required )
+GROQ_API_KEY=
 ```
 
-Migration the database by running `bunx prisma migrate dev` and generate prisma client `bunx prisma generate`.
+Run the database migration with `bunx prisma migrate dev` and generate the Prisma client with `bunx prisma generate`.
 
 
 ### Running Locally
@@ -140,4 +134,4 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Contribute
 
-Contributions are welcome ❤️.
+Contributions are welcome!

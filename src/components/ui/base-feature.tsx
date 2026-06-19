@@ -14,8 +14,8 @@ export function Features() {
             Features which everyone craves for
           </h2>
           <p className="mt-2">
-            We have created the most simpler way of using the AI chat which
-            makes it very use to use
+            We have created the simplest way of using AI chat, making it
+            incredibly easy to use
           </p>
         </div>
         <div className="mx-auto mt-8 grid max-w-sm gap-6 *:text-center md:mt-16 @min-4xl:max-w-full @min-4xl:grid-cols-3">
@@ -51,8 +51,7 @@ const CardDecorator = ({ children }: { children: ReactNode }) => (
     aria-hidden
     className="relative mx-auto size-36 [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_40%,transparent_100%)]"
   >
-    <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--primary)_1px,transparent_1px),linear-gradient(to_bottom,var(--primary)_1px,transparent_1px)] bg-[size:24px_24px] opacity-30 [--border:black] dark:[--border:white]" />
-    <div className="bg-primary drop-shadow-primary absolute inset-0 m-auto flex size-12 items-center justify-center rounded-xl drop-shadow-2xl">
+    <div className="bg-primary text-primary-foreground drop-shadow-primary absolute inset-0 m-auto flex size-12 items-center justify-center rounded-xl drop-shadow-2xl">
       {children}
     </div>
   </div>

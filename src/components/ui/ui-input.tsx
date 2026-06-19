@@ -24,7 +24,9 @@ import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import TabsSuggestion from "./tabs-suggestion";
 import { ModelSelector } from "@/components/ui/model-selector";
-import { DEFAULT_MODEL_ID } from "@/models/constants";
+import { DEFAULT_MODEL_ID, getModelById } from "@/models/constants";
+import { useApiKeys } from "@/hooks/use-api-keys";
+import { useRouter } from "next/navigation";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
@@ -49,6 +51,7 @@ interface Message {
 
 const UIInput = () => {
   const session = useSession();
+  const router = useRouter();
   const [model, setModel] = useState<string>(DEFAULT_MODEL_ID);
   const [modeOfChatting, setModeOfChatting] = useState<"text" | "voice">(
     "text",
@@ -60,11 +63,22 @@ const UIInput = () => {
   const [showWelcome, setShowWelcome] = useState(true);
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const welcomeSpokenRef = useRef(false);
   const [isWrapped, setIsWrapped] = useState(false);
   const { resolvedTheme } = useTheme();
+  const { getKey } = useApiKeys();
+  const utils = api.useUtils();
+
+  const getUserApiKey = useCallback(() => {
+    const modelInfo = getModelById(model);
+    if (modelInfo?.requiresApiKey) {
+      return getKey(modelInfo.provider);
+    }
+    return undefined;
+  }, [model, getKey]);
 
   const toggleWrap = useCallback(() => {
     setIsWrapped((prev) => !prev);
@@ -313,7 +327,19 @@ const UIInput = () => {
     abortControllerRef.current = new AbortController();
 
     try {
-      const { chatId } = await createChat.mutateAsync();
+      // If we already have a chatId (continuing conversation), reuse it
+      let chatId = currentChatId;
+      if (!chatId) {
+        const result = await createChat.mutateAsync();
+        chatId = result.chatId!;
+        setCurrentChatId(chatId);
+      }
+
+      const allMessages = [
+        ...messages.map((m) => ({ role: m.role, content: m.content })),
+        { role: "user" as const, content: currentQuery },
+      ];
+
       setTimeout(() => {
         void (async () => {
           try {
@@ -323,14 +349,19 @@ const UIInput = () => {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                messages: [{ role: "user", content: currentQuery }],
+                messages: allMessages,
                 model: model,
                 chatId: chatId,
+                userApiKey: getUserApiKey(),
               }),
               signal: abortControllerRef.current?.signal,
             });
 
             await processStream(response, currentQuery);
+            // Invalidate sidebar chat list so new chat appears
+            void utils.chat.getAllChats.invalidate();
+            // Navigate to chat page after stream completes
+            router.push(`/ask/${chatId}`);
           } catch (error) {
             if ((error as Error).name !== "AbortError") {
               console.error("Error sending message:", error);

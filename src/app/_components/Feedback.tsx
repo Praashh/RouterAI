@@ -49,7 +49,7 @@ export const Feedback = () => {
   return (
     <>
       <Toaster />
-      <div className="">
+      <div id="feedback">
         <div className="container mx-auto px-4 py-12 lg:px-8">
           <div className="mx-auto max-w-6xl">
             <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">

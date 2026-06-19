@@ -20,13 +20,13 @@ import {
 } from "@/components/ui/dialog";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 interface Chat {
   id: string;
+  title: string | null;
   updatedAt: Date;
-  userId: string;
   messages: {
     content: string;
   }[];
@@ -34,14 +34,9 @@ interface Chat {
 
 export const SidebarToggle = () => {
   const { open } = useSidebar();
-  const [chats, setChats] = useState<Chat[]>([]);
-  const { data: chatsData } = api.chat.getAllChats.useQuery();
+  const { data: chatsData } = api.chat.getAllChats.useQuery({});
 
-  useEffect(() => {
-    if (chatsData) {
-      setChats(chatsData as unknown as Chat[]);
-    }
-  }, [chatsData]);
+  const chats = ((chatsData as any)?.chats ?? []) as Chat[];
   return (
     <div
       className={`${open ? "bg-transparent" : "bg-background"} flex items-center gap-1 rounded-lg p-1`}
@@ -65,7 +60,7 @@ export const SidebarToggle = () => {
                 {chats?.map((chat: Chat) => (
                   <CommandItem key={chat.id}>
                     <Link href={`/ask/${chat.id}`}>
-                      <span>{chat.messages[0]?.content}...</span>
+                      <span>{chat.title ?? chat.messages[0]?.content ?? "New Chat"}...</span>
                     </Link>
                   </CommandItem>
                 ))}

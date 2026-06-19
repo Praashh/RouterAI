@@ -13,7 +13,7 @@ const TestimonialsSection: React.FC = () => {
       name: "Sarah Chen",
       role: "AI Researcher at Meta",
       content:
-        "T3Dotgg revolutionized how I interact with multiple AI models. The unified interface saves me hours every day.",
+        "RouterAI revolutionized how I interact with multiple AI models. The unified interface saves me hours every day.",
       result: "85% faster research iterations",
       rating: 5,
       avatar: "SC",
@@ -40,7 +40,7 @@ const TestimonialsSection: React.FC = () => {
       name: "David Kim",
       role: "CTO at StartupXYZ",
       content:
-        "T3Dotgg became essential to our product development. The insights from multiple models are invaluable.",
+        "RouterAI became essential to our product development. The insights from multiple models are invaluable.",
       result: "3x faster product iterations",
       rating: 5,
       avatar: "DK",
@@ -77,7 +77,7 @@ const TestimonialsSection: React.FC = () => {
             </h2>
             <p className="mt-2">
               See how leading companies and researchers are accelerating their
-              work with t3Dotgg
+              work with RouterAI
             </p>
           </div>
         </ScrollReveal>
