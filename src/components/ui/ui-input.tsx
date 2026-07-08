@@ -24,7 +24,8 @@ import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import TabsSuggestion from "./tabs-suggestion";
 import { ModelSelector } from "@/components/ui/model-selector";
-import { DEFAULT_MODEL_ID, getModelById } from "@/models/constants";
+import { getModelById, isImageModel } from "@/models/constants";
+import { useModel } from "@/hooks/use-model";
 import { useApiKeys } from "@/hooks/use-api-keys";
 import { useRouter } from "next/navigation";
 import SpeechRecognition, {
@@ -52,7 +53,7 @@ interface Message {
 const UIInput = () => {
   const session = useSession();
   const router = useRouter();
-  const [model, setModel] = useState<string>(DEFAULT_MODEL_ID);
+  const { modelId: model, setModelId: setModel } = useModel();
   const [modeOfChatting, setModeOfChatting] = useState<"text" | "voice">(
     "text",
   );
@@ -61,7 +62,7 @@ const UIInput = () => {
   const [search, setSearch] = useState<boolean>(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [showWelcome, setShowWelcome] = useState(true);
-  const [copied, setCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -167,7 +168,34 @@ const UIInput = () => {
 
   const processStream = async (response: Response, userMessage: string) => {
     if (!response.ok) {
-      console.error("Error from API:", response.statusText);
+      const modelInfo = getModelById(model);
+      const modelName = modelInfo?.name ?? model;
+      let errorDetail = response.statusText;
+      
+      try {
+        const errorBody = await response.json() as { error?: { message?: string }; message?: string };
+        errorDetail = errorBody?.error?.message ?? errorBody?.message ?? response.statusText;
+      } catch {
+        // ignore parse errors
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        toast.error(`Invalid API key for ${modelName}`, {
+          description: "Please check your API key and try again.",
+        });
+      } else if (response.status === 429) {
+        toast.error(`Rate limit exceeded for ${modelName}`, {
+          description: "You've exceeded your quota. Please check your plan and billing details.",
+        });
+      } else {
+        toast.error(`${modelName} failed (${response.status})`, {
+          description: errorDetail,
+        });
+      }
+
+      // Remove the user's message since it failed
+      setMessages((prev) => prev.slice(0, -1));
+      setQuery(userMessage);
       setIsLoading(false);
       return;
     }
@@ -302,6 +330,68 @@ const UIInput = () => {
     }
   };
 
+  const processImageGeneration = async (
+    prompt: string,
+    targetChatId: string,
+  ) => {
+    const tempMessageId = `ai-${Date.now()}`;
+    setMessages((prev) => [
+      ...prev,
+      { id: tempMessageId, role: "assistant", content: "Generating image..." },
+    ]);
+
+    try {
+      const response = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt,
+          model,
+          chatId: targetChatId,
+          userApiKey: getUserApiKey(),
+        }),
+        signal: abortControllerRef.current?.signal,
+      });
+
+      const data = (await response.json()) as {
+        content?: string;
+        error?: string;
+      };
+
+      if (!response.ok || data.error) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === tempMessageId
+              ? { ...msg, content: `Error: ${data.error ?? "Image generation failed"}` }
+              : msg,
+          ),
+        );
+        return;
+      }
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempMessageId
+            ? { ...msg, content: data.content ?? "" }
+            : msg,
+        ),
+      );
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === tempMessageId
+              ? { ...msg, content: "Error: Failed to generate image" }
+              : msg,
+          ),
+        );
+      }
+    } finally {
+      setIsLoading(false);
+      abortControllerRef.current = null;
+    }
+  };
+
   const handleCreateChat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim() || isLoading) return;
@@ -340,36 +430,44 @@ const UIInput = () => {
         { role: "user" as const, content: currentQuery },
       ];
 
-      setTimeout(() => {
+      if (isImageModel(model)) {
         void (async () => {
-          try {
-            const response = await fetch("/api/ask", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                messages: allMessages,
-                model: model,
-                chatId: chatId,
-                userApiKey: getUserApiKey(),
-              }),
-              signal: abortControllerRef.current?.signal,
-            });
+          await processImageGeneration(currentQuery, chatId!);
+          void utils.chat.getAllChats.invalidate();
+          router.push(`/ask/${chatId}`);
+        })();
+      } else {
+        setTimeout(() => {
+          void (async () => {
+            try {
+              const response = await fetch("/api/ask", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  messages: allMessages,
+                  model: model,
+                  chatId: chatId,
+                  userApiKey: getUserApiKey(),
+                }),
+                signal: abortControllerRef.current?.signal,
+              });
 
-            await processStream(response, currentQuery);
-            // Invalidate sidebar chat list so new chat appears
-            void utils.chat.getAllChats.invalidate();
-            // Navigate to chat page after stream completes
-            router.push(`/ask/${chatId}`);
-          } catch (error) {
-            if ((error as Error).name !== "AbortError") {
-              console.error("Error sending message:", error);
-            }
-            setIsLoading(false);
+              await processStream(response, currentQuery);
+              // Invalidate sidebar chat list so new chat appears
+              void utils.chat.getAllChats.invalidate();
+              // Navigate to chat page after stream completes
+              router.push(`/ask/${chatId}`);
+            } catch (error) {
+              if ((error as Error).name !== "AbortError") {
+                console.error("Error sending message:", error);
+              }
+              setIsLoading(false);
           }
         })();
       }, 0);
+      }
     } catch (error) {
       console.error("Error preparing request:", error);
       setIsLoading(false);
@@ -399,11 +497,11 @@ const UIInput = () => {
     setModeOfChatting(modeOfChatting === "text" ? "voice" : "text");
   };
 
-  const handleCopy = async (content: string) => {
+  const handleCopy = async (content: string, id: string) => {
     try {
       await navigator.clipboard.writeText(content);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000); // Reset after 2s
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000); // Reset after 2s
     } catch (err) {
       console.error("Failed to copy: ", err);
     }
@@ -436,7 +534,11 @@ const UIInput = () => {
               <h1 className="text-2xl">
                 Hello{" "}
                 <span className="font-semibold">
-                  {session.data?.user.name?.split(" ")[0]},
+                  {session.status === "loading" ? (
+                    <span className="bg-muted inline-block h-5 w-24 animate-pulse rounded" />
+                  ) : (
+                    `${session.data?.user.name?.split(" ")[0]},`
+                  )}
                 </span>
               </h1>
               <p className="text-3xl">How may I help you today?</p>
@@ -511,11 +613,11 @@ const UIInput = () => {
                                     )}
                                   </button>
                                   <button
-                                    onClick={() => handleCopy(codeContent)}
+                                    onClick={() => handleCopy(codeContent, codeContent)}
                                     className={`hover:bg-muted/40 sticky top-10 flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all duration-200`}
                                     aria-label="Copy code"
                                   >
-                                    {copied ? (
+                                    {copiedId === codeContent ? (
                                       <>
                                         <CheckCircleIcon
                                           weight="bold"
@@ -597,6 +699,14 @@ const UIInput = () => {
                             {props.children}
                           </h3>
                         ),
+                        img: (props) => (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={props.src}
+                            alt={props.alt ?? "Generated image"}
+                            className="my-4 max-w-full rounded-lg border shadow-md"
+                          />
+                        ),
                       }}
                     >
                       {message.content}
@@ -612,10 +722,10 @@ const UIInput = () => {
                           <ThumbsDownIcon weight="bold" />
                         </button>
                         <button
-                          onClick={() => handleCopy(message.content)}
+                          onClick={() => handleCopy(message.content, message.id)}
                           className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
                         >
-                          {!copied ? (
+                          {copiedId !== message.id ? (
                             <CopyIcon weight="bold" />
                           ) : (
                             <CheckIcon weight="bold" />
@@ -646,10 +756,10 @@ const UIInput = () => {
                     )}
                     {message.role === "user" && (
                       <button
-                        onClick={() => handleCopy(message.content)}
+                        onClick={() => handleCopy(message.content, message.id)}
                         className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
                       >
-                        {!copied ? (
+                        {copiedId !== message.id ? (
                           <CopyIcon weight="bold" />
                         ) : (
                           <CheckIcon weight="bold" />

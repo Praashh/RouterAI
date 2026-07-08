@@ -108,64 +108,26 @@ export async function fetchChatCompletion(
     throw new Error(`Model ${options.modelId} not found`);
   }
 
-  try {
-    const apiKey = getApiKeyForProvider(model.provider, options.userApiKey);
-    const apiUrl = PROVIDER_ENDPOINTS[model.provider];
-    const headers = buildHeaders(model.provider, apiKey);
-    const requestBody = buildRequestBody(model.provider, options);
+  const apiKey = getApiKeyForProvider(model.provider, options.userApiKey);
+  const apiUrl = PROVIDER_ENDPOINTS[model.provider];
+  const headers = buildHeaders(model.provider, apiKey);
+  const requestBody = buildRequestBody(model.provider, options);
 
-    console.log(`Requesting model: ${options.modelId} via ${model.provider}`);
+  console.log(`Requesting model: ${options.modelId} via ${model.provider}`);
 
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(requestBody),
-    });
+  const response = await fetch(apiUrl, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(requestBody),
+  });
 
-    if (response.ok) {
-      console.log(`Successfully used model: ${options.modelId}`);
-      return response;
-    }
-
+  if (response.ok) {
+    console.log(`Successfully used model: ${options.modelId}`);
+  } else {
     console.error(
       `Model ${options.modelId} failed with status ${response.status}`,
     );
-
-    // Fallback to default Groq model
-    if (
-      options.fallbackToDefaultModel &&
-      options.modelId !== "llama-3.3-70b-versatile"
-    ) {
-      console.warn(
-        `Falling back to llama-3.3-70b-versatile from ${options.modelId}`,
-      );
-      return fetchChatCompletion({
-        ...options,
-        modelId: "llama-3.3-70b-versatile",
-        userApiKey: undefined,
-        fallbackToDefaultModel: false,
-      });
-    }
-
-    return response;
-  } catch (error) {
-    console.error("Error fetching chat completion:", error);
-
-    if (
-      options.fallbackToDefaultModel &&
-      options.modelId !== "llama-3.3-70b-versatile"
-    ) {
-      console.warn(
-        `Model ${options.modelId} failed with error, falling back to llama-3.3-70b-versatile`,
-      );
-      return fetchChatCompletion({
-        ...options,
-        modelId: "llama-3.3-70b-versatile",
-        userApiKey: undefined,
-        fallbackToDefaultModel: false,
-      });
-    }
-
-    throw error;
   }
+
+  return response;
 }

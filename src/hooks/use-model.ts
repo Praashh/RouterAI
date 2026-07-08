@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { DEFAULT_MODEL_ID, getModelById } from "@/models/constants";
 import type { Model } from "@/models/types";
 
@@ -13,37 +13,38 @@ export function useModel({
   storageKey = "preferredModel",
   persistToLocalStorage = true,
 }: UseModelOptions = {}) {
+  // Always start with the default to match SSR
+  const [modelId, setModelId] = useState<string>(initialModel);
+  const [model, setModel] = useState<Model | undefined>(() =>
+    getModelById(initialModel),
+  );
+  const hasMounted = useRef(false);
 
-  const [modelId, setModelId] = useState<string>(() => {
-    if (typeof window === "undefined" || !persistToLocalStorage) {
-      return initialModel;
-    }
+  // Hydrate from localStorage after mount (client-only)
+  useEffect(() => {
+    if (!persistToLocalStorage) return;
 
     const storedModel = localStorage.getItem(storageKey);
-    // If stored model no longer exists, reset to default
     if (storedModel) {
-      const model = getModelById(storedModel);
-      if (model) {
-        return storedModel;
+      const found = getModelById(storedModel);
+      if (found) {
+        setModelId(storedModel);
+        setModel(found);
       }
     }
-    return initialModel;
-  });
+    hasMounted.current = true;
+  }, [persistToLocalStorage, storageKey]);
 
-  const [model, setModel] = useState<Model | undefined>(() =>
-    getModelById(modelId),
-  );
-
-
+  // Persist to localStorage when model changes (after initial mount)
   useEffect(() => {
+    if (!hasMounted.current) return;
+
     setModel(getModelById(modelId));
 
-
-    if (persistToLocalStorage && typeof window !== "undefined") {
+    if (persistToLocalStorage) {
       localStorage.setItem(storageKey, modelId);
     }
   }, [modelId, persistToLocalStorage, storageKey]);
-
 
   const setModelById = useCallback((id: string) => {
     setModelId(id);

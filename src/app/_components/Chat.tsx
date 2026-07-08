@@ -20,7 +20,8 @@ import remarkGfm from "remark-gfm";
 import { Geist_Mono } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { ModelSelector } from "@/components/ui/model-selector";
-import { DEFAULT_MODEL_ID, getModelById } from "@/models/constants";
+import { getModelById, isImageModel } from "@/models/constants";
+import { useModel } from "@/hooks/use-model";
 import { useApiKeys } from "@/hooks/use-api-keys";
 import SpeechRecognition, {
   useSpeechRecognition,
@@ -53,7 +54,7 @@ interface Message {
 }
 
 const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
-  const [model, setModel] = useState<string>(DEFAULT_MODEL_ID);
+  const { modelId: model, setModelId: setModel } = useModel();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [search, setSearch] = useState<boolean>(false);
   const [input, setInput] = useState("");
@@ -62,7 +63,7 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
     "text",
   );
   const [showWelcome, setShowWelcome] = useState(true);
-  const [copied, setCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const welcomeSpokenRef = useRef(false);
@@ -157,7 +158,31 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
 
   const processStream = async (response: Response, userMessage: string) => {
     if (!response.ok) {
-      console.error("Error from API:", response.statusText);
+      const modelInfo = getModelById(model);
+      const modelName = modelInfo?.name ?? model;
+      let errorDetail = response.statusText;
+
+      try {
+        const errorBody = await response.json() as { error?: { message?: string }; message?: string };
+        errorDetail = errorBody?.error?.message ?? errorBody?.message ?? response.statusText;
+      } catch {
+        // ignore parse errors
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        toast.error(`Invalid API key for ${modelName}`, {
+          description: "Please check your API key and try again.",
+        });
+      } else if (response.status === 429) {
+        toast.error(`Rate limit exceeded for ${modelName}`, {
+          description: "You've exceeded your quota. Please check your plan and billing details.",
+        });
+      } else {
+        toast.error(`${modelName} failed (${response.status})`, {
+          description: errorDetail,
+        });
+      }
+
       setIsLoading(false);
       return;
     }
@@ -246,6 +271,68 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
     }
   };
 
+  const processImageGeneration = async (
+    prompt: string,
+    targetChatId: string,
+  ) => {
+    const tempMessageId = `ai-${Date.now()}`;
+    setMessages((prev) => [
+      ...prev,
+      { id: tempMessageId, role: "assistant", content: "Generating image..." },
+    ]);
+
+    try {
+      const response = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt,
+          model,
+          chatId: targetChatId,
+          userApiKey: getUserApiKey(),
+        }),
+        signal: abortControllerRef.current?.signal,
+      });
+
+      const data = (await response.json()) as {
+        content?: string;
+        error?: string;
+      };
+
+      if (!response.ok || data.error) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === tempMessageId
+              ? { ...msg, content: `Error: ${data.error ?? "Image generation failed"}` }
+              : msg,
+          ),
+        );
+        return;
+      }
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempMessageId
+            ? { ...msg, content: data.content ?? "" }
+            : msg,
+        ),
+      );
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === tempMessageId
+              ? { ...msg, content: "Error: Failed to generate image" }
+              : msg,
+          ),
+        );
+      }
+    } finally {
+      setIsLoading(false);
+      abortControllerRef.current = null;
+    }
+  };
+
   const handleCreateChat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim() || isLoading) return;
@@ -273,33 +360,40 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
     abortControllerRef.current = new AbortController();
 
     try {
-      setTimeout(() => {
+      if (isImageModel(model)) {
         void (async () => {
-          try {
-            const response = await fetch("/api/ask", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
-                model: model,
-                chatId: chatId,
-                userApiKey: getUserApiKey(),
-              }),
-              signal: abortControllerRef.current?.signal,
-            });
-
-            await processStream(response, currentQuery);
-            void utils.chat.getAllChats.invalidate();
-          } catch (error) {
-            if ((error as Error).name !== "AbortError") {
-              console.error("Error sending message:", error);
-            }
-            setIsLoading(false);
-          }
+          await processImageGeneration(currentQuery, chatId);
+          void utils.chat.getAllChats.invalidate();
         })();
-      }, 0);
+      } else {
+        setTimeout(() => {
+          void (async () => {
+            try {
+              const response = await fetch("/api/ask", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
+                  model: model,
+                  chatId: chatId,
+                  userApiKey: getUserApiKey(),
+                }),
+                signal: abortControllerRef.current?.signal,
+              });
+
+              await processStream(response, currentQuery);
+              void utils.chat.getAllChats.invalidate();
+            } catch (error) {
+              if ((error as Error).name !== "AbortError") {
+                console.error("Error sending message:", error);
+              }
+              setIsLoading(false);
+            }
+          })();
+        }, 0);
+      }
     } catch (error) {
       console.error("Error preparing request:", error);
       setIsLoading(false);
@@ -355,21 +449,25 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
     abortControllerRef.current = new AbortController();
 
     try {
-      const response = await fetch("/api/ask", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
-          model: model,
-          chatId: chatId,
-          userApiKey: getUserApiKey(),
-        }),
-        signal: abortControllerRef.current.signal,
-      });
+      if (isImageModel(model)) {
+        await processImageGeneration(currentMessage, chatId);
+      } else {
+        const response = await fetch("/api/ask", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
+            model: model,
+            chatId: chatId,
+            userApiKey: getUserApiKey(),
+          }),
+          signal: abortControllerRef.current.signal,
+        });
 
-      await processStream(response, currentMessage);
+        await processStream(response, currentMessage);
+      }
       // Invalidate sidebar so it reflects updated chat
       void utils.chat.getAllChats.invalidate();
     } catch (error) {
@@ -411,11 +509,11 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
     setModeOfChatting(modeOfChatting === "text" ? "voice" : "text");
   };
 
-  const handleCopy = async (content: string) => {
+  const handleCopy = async (content: string, id: string) => {
     try {
       await navigator.clipboard.writeText(content);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000); // Reset after 2s
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000); // Reset after 2s
     } catch (err) {
       console.error("Failed to copy: ", err);
     }
@@ -511,11 +609,11 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
                                         )}
                                       </button>
                                       <button
-                                        onClick={() => handleCopy(codeContent)}
+                                        onClick={() => handleCopy(codeContent, codeContent)}
                                         className={`hover:bg-muted/40 sticky top-10 flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all duration-200`}
                                         aria-label="Copy code"
                                       >
-                                        {copied ? (
+                                        {copiedId === codeContent ? (
                                           <>
                                             <CheckCircleIcon
                                               weight="bold"
@@ -601,6 +699,14 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
                                 {props.children}
                               </h3>
                             ),
+                            img: (props) => (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={props.src}
+                                alt={props.alt ?? "Generated image"}
+                                className="my-4 max-w-full rounded-lg border shadow-md"
+                              />
+                            ),
                           }}
                         >
                           {message.content}
@@ -616,10 +722,10 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
                               <ThumbsDownIcon weight="bold" />
                             </button>
                             <button
-                              onClick={() => handleCopy(message.content)}
+                              onClick={() => handleCopy(message.content, message.id)}
                               className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
                             >
-                              {!copied ? (
+                              {copiedId !== message.id ? (
                                 <CopyIcon weight="bold" />
                               ) : (
                                 <CheckIcon weight="bold" />
@@ -650,10 +756,10 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
                         )}
                         {message.role === "user" && (
                           <button
-                            onClick={() => handleCopy(message.content)}
+                            onClick={() => handleCopy(message.content, message.id)}
                             className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
                           >
-                            {!copied ? (
+                            {copiedId !== message.id ? (
                               <CopyIcon weight="bold" />
                             ) : (
                               <CheckIcon weight="bold" />
@@ -691,7 +797,7 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    void handleCreateChat(e as any);
+                    void handleSubmit(e as any);
                   }
                 }}
                 placeholder="Ask whatever you want to be"

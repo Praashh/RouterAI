@@ -4,13 +4,13 @@ export const RouterAILogo = () => {
   <text
     x="0"
     y="42"
-    font-family="Inter, SF Pro Display, Arial, sans-serif"
-    font-size="35"
-    font-weight="700"
+    fontFamily="Inter, SF Pro Display, Arial, sans-serif"
+    fontSize="35"
+    fontWeight="700"
     fill="white"
-    letter-spacing="-2"
+    letterSpacing="-2"
   >
-    Router<tspan font-weight="900">AI</tspan>
+    Router<tspan fontWeight="900">AI</tspan>
   </text>
 </svg>
   );

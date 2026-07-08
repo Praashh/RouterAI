@@ -22,4 +22,5 @@ export enum ModelCapability {
   CODE = "code",
   VISION = "vision",
   FUNCTION_CALLING = "function_calling",
+  IMAGE_GENERATION = "image_generation",
 }

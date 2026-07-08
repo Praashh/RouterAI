@@ -63,6 +63,40 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
+    // Call the model FIRST so we can return a proper HTTP error if it fails
+    let modelResponse: Response;
+    try {
+      modelResponse = await fetchChatCompletion({
+        modelId: model,
+        messages,
+        stream: true,
+        userApiKey,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to communicate with model";
+      return new Response(
+        JSON.stringify({ error: { message, type: "model_error" } }),
+        { status: 502, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    if (!modelResponse.ok) {
+      // Forward the upstream error status and body to the client
+      let errorBody: ChatErrorResponse = {};
+      try {
+        errorBody = (await modelResponse.json()) as ChatErrorResponse;
+      } catch {
+        // ignore parse errors
+      }
+      const errorMessage =
+        errorBody?.error?.message ?? errorBody?.message ?? modelResponse.statusText;
+      return new Response(
+        JSON.stringify({ error: { message: errorMessage, type: "api_error" } }),
+        { status: modelResponse.status, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    // Model responded OK — now set up the stream
     const headers = new Headers();
     headers.set("Content-Type", "text/event-stream");
     headers.set("Cache-Control", "no-cache");
@@ -75,28 +109,7 @@ export async function POST(req: Request): Promise<Response> {
       let accumulatedContent = "";
       
       try {
-        const response = await fetchChatCompletion({
-          modelId: model,
-          messages,
-          stream: true,
-          fallbackToDefaultModel: true,
-          userApiKey,
-        });
-
-        if (!response.ok) {
-          const errorData = (await response.json()) as ChatErrorResponse;
-          const errorMessage = `API error: ${response.status} ${JSON.stringify(errorData)}`;
-          const encoder = new TextEncoder();
-          await writer.write(
-            encoder.encode(
-              `data: ${JSON.stringify({ error: errorMessage })}\n\n`,
-            ),
-          );
-          await writer.close();
-          return;
-        }
-
-        const reader = response.body?.getReader();
+        const reader = modelResponse.body?.getReader();
         if (!reader) {
           const encoder = new TextEncoder();
           await writer.write(

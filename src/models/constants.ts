@@ -137,6 +137,29 @@ export const MODELS: Model[] = [
     isAvailable: true,
     requiresApiKey: true,
   },
+  // === IMAGE GENERATION MODELS (require user API key) ===
+  {
+    id: "dall-e-3",
+    name: "DALL-E 3",
+    provider: ModelProvider.OPENAI,
+    description: "OpenAI's most capable image generation model",
+    maxTokens: 0,
+    pricePer1kTokens: 0,
+    capabilities: [ModelCapability.IMAGE_GENERATION],
+    isAvailable: true,
+    requiresApiKey: true,
+  },
+  {
+    id: "gemini-2.0-flash-preview-image-generation",
+    name: "Gemini Image Gen",
+    provider: ModelProvider.GOOGLE,
+    description: "Google's Gemini model with native image generation",
+    maxTokens: 8192,
+    pricePer1kTokens: 0,
+    capabilities: [ModelCapability.IMAGE_GENERATION, ModelCapability.TEXT],
+    isAvailable: true,
+    requiresApiKey: true,
+  },
 ];
 
 export const DEFAULT_MODEL_ID = "llama-3.3-70b-versatile";
@@ -147,4 +170,9 @@ export const getModelById = (id: string): Model | undefined => {
 
 export const getAvailableModels = (): Model[] => {
   return MODELS.filter((model) => model.isAvailable !== false);
+};
+
+export const isImageModel = (id: string): boolean => {
+  const model = getModelById(id);
+  return model?.capabilities.includes(ModelCapability.IMAGE_GENERATION) ?? false;
 };
