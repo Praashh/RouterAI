@@ -1,5 +1,3 @@
-"use server"
-
 import { transporter, user } from "@/lib/mail";
 
 interface EmailResponse {

@@ -13,7 +13,7 @@ import { ModelCapability, ModelProvider } from "@/models/types";
 import { getModelProviderIcon } from "@/models/utils";
 import { useApiKeys } from "@/hooks/use-api-keys";
 
-const STORAGE_KEY = "routerai-enabled-models";
+const STORAGE_KEY = "routerai-enabled-models:v1";
 
 function getEnabledModels(): Set<string> {
   if (typeof window === "undefined") return new Set(MODELS.map((m) => m.id));
@@ -133,15 +133,9 @@ const ModelCard = ({
 };
 
 const Models = () => {
-  const [enabledModels, setEnabledModels] = useState<Set<string>>(
-    () => new Set(MODELS.map((m) => m.id)),
-  );
+  const [enabledModels, setEnabledModels] = useState<Set<string>>(getEnabledModels);
   const [filterCapability, setFilterCapability] = useState<string | null>(null);
   const { hasKey } = useApiKeys();
-
-  useEffect(() => {
-    setEnabledModels(getEnabledModels());
-  }, []);
 
   const handleToggle = (modelId: string, enabled: boolean) => {
     const next = new Set(enabledModels);
@@ -155,11 +149,12 @@ const Models = () => {
   };
 
   const handleSelectRecommended = () => {
-    const recommended = new Set(
-      MODELS.filter((m) => !m.requiresApiKey || hasKey(m.provider)).map(
-        (m) => m.id,
-      ),
-    );
+    const recommended = new Set<string>();
+    for (const m of MODELS) {
+      if (!m.requiresApiKey || hasKey(m.provider)) {
+        recommended.add(m.id);
+      }
+    }
     setEnabledModels(recommended);
     saveEnabledModels(recommended);
   };
@@ -176,14 +171,14 @@ const Models = () => {
       )
     : MODELS;
 
-  // Group by provider
-  const providers = Object.values(ModelProvider);
-  const groupedModels = providers
-    .map((provider) => ({
-      provider,
-      models: filteredModels.filter((m) => m.provider === provider),
-    }))
-    .filter((g) => g.models.length > 0);
+  // Group by provider in one pass
+  const groupedModels: { provider: ModelProvider; models: typeof filteredModels }[] = [];
+  for (const provider of Object.values(ModelProvider)) {
+    const models = filteredModels.filter((m) => m.provider === provider);
+    if (models.length > 0) {
+      groupedModels.push({ provider, models });
+    }
+  }
 
   return (
     <div className="bg-background mx-auto w-full max-w-4xl">

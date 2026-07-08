@@ -19,6 +19,25 @@ import { api } from "@/trpc/react";
 import { toast, Toaster } from "sonner";
 import { useRouter } from "next/navigation";
 import { FetchUser } from "@/actions/fetchUser";
+
+const predefinedTraits = [
+  "friendly",
+  "witty",
+  "concise",
+  "curious",
+  "empathetic",
+  "creative",
+  "patient",
+] as const;
+
+const fonts = [
+  { value: "proxima", label: "Proxima Vara" },
+  { value: "inter", label: "Inter" },
+  { value: "geist", label: "Geist" },
+  { value: "playfair", label: "Playfair Display" },
+  { value: "roboto", label: "Roboto" },
+] as const;
+
 export const Customisation = () => {
   const router = useRouter();
   const [userPreferences, setUserPreferences] = useState<{
@@ -85,24 +104,6 @@ export const Customisation = () => {
     localStorage.setItem("boringTheme", isBoringTheme.toString());
   }, [isBoringTheme]);
 
-  const predefinedTraits = [
-    "friendly",
-    "witty",
-    "concise",
-    "curious",
-    "empathetic",
-    "creative",
-    "patient",
-  ] as const;
-
-  const fonts = [
-    { value: "proxima", label: "Proxima Vara" },
-    { value: "inter", label: "Inter" },
-    { value: "geist", label: "Geist" },
-    { value: "playfair", label: "Playfair Display" },
-    { value: "roboto", label: "Roboto" },
-  ] as const;
-
   const addTrait = (trait: string) => {
     if (!userPreferences.customTraits?.includes(trait)) {
       setUserPreferences({ ...userPreferences, customTraits: [...(userPreferences.customTraits || []), trait] });
@@ -155,10 +156,11 @@ export const Customisation = () => {
         <div className="space-y-1">
           {/* Name Section */}
           <div>
-            <label className="text-foreground mb-1 block text-sm font-medium">
+            <label htmlFor="pref-nickname" className="text-foreground mb-1 block text-sm font-medium">
               What should RouterAI call you?
             </label>
             <Input
+              id="pref-nickname"
               type="text"
               placeholder="Enter your name"
               value={userPreferences.nickname || ""}
@@ -171,10 +173,11 @@ export const Customisation = () => {
 
           {/* Occupation Section */}
           <div>
-            <label className="text-foreground mb-1 block text-sm font-medium">
+            <label htmlFor="pref-occupation" className="text-foreground mb-1 block text-sm font-medium">
               What do you do?
             </label>
             <Input
+              id="pref-occupation"
               type="text"
               placeholder="Engineer, student, etc."
               value={userPreferences.whatDoYouDo || ""}
@@ -187,7 +190,7 @@ export const Customisation = () => {
 
           {/* Traits Section */}
           <div>
-            <label className="text-foreground mb-1 block text-sm font-medium">
+            <label htmlFor="pref-traits" className="text-foreground mb-1 block text-sm font-medium">
               What traits should RouterAI have?{" "}
               <span className="text-muted-foreground text-xs">
                 (up to 50, max 100 chars each)
@@ -206,6 +209,8 @@ export const Customisation = () => {
                       >
                         {trait}
                         <button
+                          type="button"
+                          aria-label={`Remove trait: ${trait}`}
                           onClick={() => removeTrait(trait)}
                           className="hover:bg-accent-foreground hover:text-accent rounded-full p-0.5 transition-colors"
                         >
@@ -216,6 +221,7 @@ export const Customisation = () => {
                   </div>
                 )}
                 <Input
+                  id="pref-traits"
                   type="text"
                   className="border-none bg-transparent focus-visible:ring-0"
                   placeholder="Type a trait and press Enter or Tab..."
@@ -250,10 +256,11 @@ export const Customisation = () => {
 
           {/* Additional Info Section */}
           <div>
-            <label className="text-foreground mb-1 block text-sm font-medium">
+            <label htmlFor="pref-about" className="text-foreground mb-1 block text-sm font-medium">
               Anything else RouterAI should know about you?
             </label>
             <Textarea
+              id="pref-about"
               placeholder="Interests, values, or preferences to keep in mind"
               value={userPreferences.about || ""}
               onChange={(e) => setUserPreferences({ ...userPreferences, about: e.target.value })}

@@ -57,6 +57,12 @@ interface Chat {
   }[];
 }
 
+function getChatDisplayTitle(chat: Chat) {
+  if (chat.title) return chat.title.length > 30 ? chat.title.slice(0, 30) + "..." : chat.title;
+  if (chat.messages[0]?.content) return chat.messages[0].content.slice(0, 30) + "...";
+  return "New Chat";
+}
+
 export function UIStructure() {
   const [hoverChatId, setHoverChatId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -72,12 +78,6 @@ export function UIStructure() {
   const router = useRouter();
 
   const chats = (chatsData?.chats ?? chatsData ?? []) as unknown as Chat[];
-
-  const getChatDisplayTitle = (chat: Chat) => {
-    if (chat.title) return chat.title.length > 30 ? chat.title.slice(0, 30) + "..." : chat.title;
-    if (chat.messages[0]?.content) return chat.messages[0].content.slice(0, 30) + "...";
-    return "New Chat";
-  };
 
   const handleSaveChat = (chatId: string) => {
     saveChat.mutate({ chatId }, {
@@ -191,7 +191,9 @@ export function UIStructure() {
                               <div
                                 className={`absolute top-1/2 -right-16 z-[10] flex h-full -translate-y-1/2 items-center justify-center gap-1.5 rounded-r-md bg-transparent px-1 backdrop-blur-xl transition-all duration-200 ease-in-out ${chat.id === hoverChatId ? "group-hover:right-0" : ""}`}
                               >
-                                <div
+                                <button
+                                  type="button"
+                                  aria-label="Remove bookmark"
                                   className="flex items-center justify-center rounded-md"
                                   onClick={(e) => {
                                     e.preventDefault();
@@ -202,8 +204,10 @@ export function UIStructure() {
                                     weight="fill"
                                     className="hover:text-foreground size-4"
                                   />
-                                </div>
-                                <div
+                                </button>
+                                <button
+                                  type="button"
+                                  aria-label="Copy share link"
                                   className="flex items-center justify-center rounded-md"
                                   onClick={(e) => {
                                     e.preventDefault();
@@ -216,8 +220,10 @@ export function UIStructure() {
                                     weight="fill"
                                     className="hover:text-foreground size-4"
                                   />
-                                </div>
-                                <div
+                                </button>
+                                <button
+                                  type="button"
+                                  aria-label="Delete chat"
                                   className="flex items-center justify-center rounded-md"
                                   onClick={(e) => {
                                     e.preventDefault();
@@ -228,7 +234,7 @@ export function UIStructure() {
                                     weight="bold"
                                     className="hover:text-foreground size-4"
                                   />
-                                </div>
+                                </button>
                               </div>
                             </Link>
                           </div>
@@ -277,7 +283,9 @@ export function UIStructure() {
                               <div
                                 className={`absolute top-1/2 -right-16 z-[10] flex h-full -translate-y-1/2 items-center justify-center gap-1.5 rounded-r-md bg-transparent px-1 backdrop-blur-xl transition-all duration-200 ease-in-out ${chat.id === hoverChatId ? "group-hover:right-0" : ""}`}
                               >
-                                <div
+                                <button
+                                  type="button"
+                                  aria-label="Save chat"
                                   className="flex items-center justify-center rounded-md"
                                   onClick={() => handleSaveChat(chat.id)}
                                 >
@@ -285,9 +293,11 @@ export function UIStructure() {
                                     weight={"bold"}
                                     className="hover:text-foreground size-4"
                                   />
-                                </div>
+                                </button>
 
-                                <div
+                                <button
+                                  type="button"
+                                  aria-label="Copy share link"
                                   className="flex items-center justify-center rounded-md"
                                   onClick={(e) => {
                                     e.preventDefault();
@@ -300,9 +310,11 @@ export function UIStructure() {
                                     weight="fill"
                                     className="hover:text-foreground size-4"
                                   />
-                                </div>
+                                </button>
 
-                                <div
+                                <button
+                                  type="button"
+                                  aria-label="Delete chat"
                                   className="flex items-center justify-center rounded-md"
                                   onClick={() => handleDeleteChat(chat.id)}
                                 >
@@ -310,7 +322,7 @@ export function UIStructure() {
                                     weight={"bold"}
                                     className="hover:text-foreground size-4"
                                   />
-                                </div>
+                                </button>
                               </div>
                               {/* <DropdownMenu>
                             <DropdownMenuTrigger asChild>

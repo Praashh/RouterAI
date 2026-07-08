@@ -1,17 +1,14 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import UIInput from "@/components/ui/ui-input";
 import Turnstile from "react-turnstile";
 import { toast } from "sonner";
 
 const AskPage = () => {
-  const [token, setToken] = useState<string | null>(null);
-  useEffect(() => {
-    const savedToken = localStorage.getItem("turnstileToken");
-    if (savedToken) {
-      setToken(savedToken);
-    }
-  }, []);
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("turnstileToken");
+  });
   return (
     <div className="flex w-full max-w-screen flex-col items-center justify-center gap-4">
       <div className="flex w-full flex-col items-center gap-4">

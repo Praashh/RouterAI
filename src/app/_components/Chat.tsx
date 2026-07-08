@@ -53,11 +53,26 @@ interface Message {
   content: string;
 }
 
+function handleStopListening() {
+  SpeechRecognition.stopListening();
+  toast.success("Stopped listening", {
+    description: "Processing your voice input...",
+  });
+}
+
 const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
   const { modelId: model, setModelId: setModel } = useModel();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [search, setSearch] = useState<boolean>(false);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const query = localStorage.getItem("chatQuery");
+    if (query) {
+      localStorage.removeItem("chatQuery");
+      return query;
+    }
+    return "";
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [modeOfChatting, setModeOfChatting] = useState<"text" | "voice">(
     "text",
@@ -69,8 +84,8 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
   const welcomeSpokenRef = useRef(false);
   const [isWrapped, setIsWrapped] = useState(false);
   const { resolvedTheme } = useTheme();
-  const [query, setQuery] = useState<string>("");
-  const [attachments, setAttachments] = useState<File[]>([]);
+  const queryRef = useRef<string>("");
+  const attachmentsRef = useRef<File[]>([]);
   const [chatId, setChatId] = useState<string>(initialChatId);
   const { getKey } = useApiKeys();
   const utils = api.useUtils();
@@ -144,7 +159,7 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
 
   useEffect(() => {
     if (listening) {
-      setQuery(transcript);
+      queryRef.current = transcript;
     }
   }, [listening, transcript]);
 
@@ -335,11 +350,11 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
 
   const handleCreateChat = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim() || isLoading) return;
+    if (!queryRef.current.trim() || isLoading) return;
 
     setShowWelcome(false);
 
-    const currentQuery = query.trim();
+    const currentQuery = queryRef.current.trim();
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -349,7 +364,7 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
 
     const updatedMessages = [...messages, userMessage];
 
-    setQuery("");
+    queryRef.current = "";
     setMessages(updatedMessages);
     setIsLoading(true);
 
@@ -478,13 +493,6 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
     }
   };
 
-  useEffect(() => {
-    const query = localStorage.getItem("chatQuery");
-    if (query) {
-      setInput(query);
-      localStorage.removeItem("chatQuery");
-    }
-  }, []);
 
   const handleStartListening = () => {
     resetTranscript();
@@ -492,13 +500,6 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
     toast.success("Listening...", {
       description: "Speak now...",
       duration: 5000,
-    });
-  };
-
-  const handleStopListening = () => {
-    SpeechRecognition.stopListening();
-    toast.success("Stopped listening", {
-      description: "Processing your voice input...",
     });
   };
 
@@ -527,7 +528,7 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
     fileInput.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        setAttachments((prev) => [...prev, file]);
+        attachmentsRef.current = [...attachmentsRef.current, file];
       }
     };
     fileInput.click();
@@ -591,6 +592,7 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
                                     <div>{match ? match[1] : "text"}</div>
                                     <div className="flex items-center gap-2">
                                       <button
+                                        type="button"
                                         onClick={toggleWrap}
                                         className={`hover:bg-muted/40 flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all duration-200`}
                                         aria-label="Toggle line wrapping"
@@ -609,6 +611,7 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
                                         )}
                                       </button>
                                       <button
+                                        type="button"
                                         onClick={() => handleCopy(codeContent, codeContent)}
                                         className={`hover:bg-muted/40 sticky top-10 flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all duration-200`}
                                         aria-label="Copy code"
@@ -715,13 +718,15 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
                       <div className="font-medium">
                         {message.role === "assistant" && (
                           <div className="invisible flex w-fit items-center gap-2 text-base font-semibold group-hover:visible">
-                            <button className="hover:bg-accent flex size-7 items-center justify-center rounded-lg">
+                            <button type="button" aria-label="Like response" className="hover:bg-accent flex size-7 items-center justify-center rounded-lg">
                               <ThumbsUpIcon weight="bold" />
                             </button>
-                            <button className="hover:bg-accent flex size-7 items-center justify-center rounded-lg">
+                            <button type="button" aria-label="Dislike response" className="hover:bg-accent flex size-7 items-center justify-center rounded-lg">
                               <ThumbsDownIcon weight="bold" />
                             </button>
                             <button
+                              type="button"
+                              aria-label="Copy message"
                               onClick={() => handleCopy(message.content, message.id)}
                               className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
                             >
@@ -733,6 +738,8 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
                             </button>
                             {modeOfChatting === "voice" && (
                               <button
+                                type="button"
+                                aria-label={speaking ? "Stop reading" : "Read aloud"}
                                 className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
                                 onClick={() => {
                                   if (speaking) {
@@ -756,6 +763,8 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
                         )}
                         {message.role === "user" && (
                           <button
+                            type="button"
+                            aria-label="Copy message"
                             onClick={() => handleCopy(message.content, message.id)}
                             className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
                           >
@@ -819,6 +828,8 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
                   {modeOfChatting === "voice" && (
                     <div className="bg-accent flex size-8 items-center justify-center rounded-lg border">
                       <button
+                        type="button"
+                        aria-label="Toggle voice input"
                         onClick={
                           listening ? handleStopListening : handleStartListening
                         }

@@ -68,15 +68,12 @@ const SharedChat = ({ chatId: initialChatId }: { chatId: string }) => {
     supported: ttsSupported,
     voices,
   } = useSpeechSynthesis();
-  const [selectedVoice, setSelectedVoice] =
-    useState<SpeechSynthesisVoice | null>(null);
-
-
+  const selectedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
   useEffect(() => {
     if (ttsSupported && voices.length > 0) {
       const defaultVoice = voices.find((v) => v.default) || voices[0];
-      setSelectedVoice(defaultVoice!);
+      selectedVoiceRef.current = defaultVoice!;
     }
   }, [voices, ttsSupported]);
 
@@ -163,12 +160,14 @@ const SharedChat = ({ chatId: initialChatId }: { chatId: string }) => {
                                     <div>{match ? match[1] : "text"}</div>
                                     <div className="flex items-center gap-2">
                                       <button
+                                        type="button"
                                         className={`hover:bg-muted/40 flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all duration-200`}
                                         aria-label="Toggle line wrapping"
                                       >
                                         <WrapText className="h-3 w-3" />
                                       </button>
                                       <button
+                                        type="button"
                                         onClick={() => handleCopy(codeContent)}
                                         className={`hover:bg-muted/40 sticky top-10 flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all duration-200`}
                                         aria-label="Copy code"
@@ -260,13 +259,15 @@ const SharedChat = ({ chatId: initialChatId }: { chatId: string }) => {
                       <div className="font-medium">
                         {message.role === "assistant" && (
                           <div className="invisible flex w-fit items-center gap-2 text-base font-semibold group-hover:visible">
-                            <button className="hover:bg-accent flex size-7 items-center justify-center rounded-lg">
+                            <button type="button" aria-label="Like response" className="hover:bg-accent flex size-7 items-center justify-center rounded-lg">
                               <ThumbsUpIcon weight="bold" />
                             </button>
-                            <button className="hover:bg-accent flex size-7 items-center justify-center rounded-lg">
+                            <button type="button" aria-label="Dislike response" className="hover:bg-accent flex size-7 items-center justify-center rounded-lg">
                               <ThumbsDownIcon weight="bold" />
                             </button>
                             <button
+                              type="button"
+                              aria-label="Copy message"
                               onClick={() => handleCopy(message.content)}
                               className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
                             >
@@ -277,14 +278,16 @@ const SharedChat = ({ chatId: initialChatId }: { chatId: string }) => {
                               )}
                             </button>
                               <button
+                                type="button"
+                                aria-label={speaking ? "Stop reading" : "Read aloud"}
                                 className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
                                 onClick={() => {
                                   if (speaking) {
                                     cancel();
-                                  } else if (ttsSupported && selectedVoice) {
+                                  } else if (ttsSupported && selectedVoiceRef.current) {
                                     speak({
                                       text: message.content,
-                                      voice: selectedVoice,
+                                      voice: selectedVoiceRef.current,
                                     });
                                   }
                                 }}
@@ -299,6 +302,8 @@ const SharedChat = ({ chatId: initialChatId }: { chatId: string }) => {
                         )}
                         {message.role === "user" && (
                           <button
+                            type="button"
+                            aria-label="Copy message"
                             onClick={() => handleCopy(message.content)}
                             className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
                           >

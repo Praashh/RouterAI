@@ -168,10 +168,6 @@ export const getModelById = (id: string): Model | undefined => {
   return MODELS.find((model) => model.id === id);
 };
 
-export const getAvailableModels = (): Model[] => {
-  return MODELS.filter((model) => model.isAvailable !== false);
-};
-
 export const isImageModel = (id: string): boolean => {
   const model = getModelById(id);
   return model?.capabilities.includes(ModelCapability.IMAGE_GENERATION) ?? false;

@@ -16,9 +16,11 @@ export function SelectTheme() {
           open && "flex-1 justify-end",
         )}
       >
-        <div
+        <button
+          type="button"
           onClick={() => setTheme(theme === "light" ? "dark" : "light")}
           className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
+          aria-label="Toggle theme"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -39,7 +41,7 @@ export function SelectTheme() {
             <path d="M12 14.3l7.37 -7.37"></path>
             <path d="M12 19.6l8.85 -8.85"></path>
           </svg>
-        </div>
+        </button>
       </div>
     </>
   );

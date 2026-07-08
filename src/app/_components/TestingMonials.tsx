@@ -1,51 +1,51 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { LazyMotion, domAnimation, m, AnimatePresence } from "framer-motion";
 import { Star, ArrowLeft, ArrowRight } from "@phosphor-icons/react";
 import ScrollReveal from "../components/ScrollReveal";
 import { Badge } from "@/components/ui/badge";
 
+const testimonials = [
+  {
+    name: "Sarah Chen",
+    role: "AI Researcher at Meta",
+    content:
+      "RouterAI revolutionized how I interact with multiple AI models. The unified interface saves me hours every day.",
+    result: "85% faster research iterations",
+    rating: 5,
+    avatar: "SC",
+  },
+  {
+    name: "Marcus Rodriguez",
+    role: "Senior Developer at Stripe",
+    content:
+      "The ability to compare responses from different models side-by-side is game-changing for our development workflow.",
+    result: "40% improvement in code quality",
+    rating: 5,
+    avatar: "MR",
+  },
+  {
+    name: "Emily Watson",
+    role: "Product Manager at Notion",
+    content:
+      "Finally, an AI tool that understands enterprise needs. The reliability and speed are unmatched.",
+    result: "60% reduction in response time",
+    rating: 5,
+    avatar: "EW",
+  },
+  {
+    name: "David Kim",
+    role: "CTO at StartupXYZ",
+    content:
+      "RouterAI became essential to our product development. The insights from multiple models are invaluable.",
+    result: "3x faster product iterations",
+    rating: 5,
+    avatar: "DK",
+  },
+];
+
 const TestimonialsSection: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
-
-  const testimonials = [
-    {
-      name: "Sarah Chen",
-      role: "AI Researcher at Meta",
-      content:
-        "RouterAI revolutionized how I interact with multiple AI models. The unified interface saves me hours every day.",
-      result: "85% faster research iterations",
-      rating: 5,
-      avatar: "SC",
-    },
-    {
-      name: "Marcus Rodriguez",
-      role: "Senior Developer at Stripe",
-      content:
-        "The ability to compare responses from different models side-by-side is game-changing for our development workflow.",
-      result: "40% improvement in code quality",
-      rating: 5,
-      avatar: "MR",
-    },
-    {
-      name: "Emily Watson",
-      role: "Product Manager at Notion",
-      content:
-        "Finally, an AI tool that understands enterprise needs. The reliability and speed are unmatched.",
-      result: "60% reduction in response time",
-      rating: 5,
-      avatar: "EW",
-    },
-    {
-      name: "David Kim",
-      role: "CTO at StartupXYZ",
-      content:
-        "RouterAI became essential to our product development. The insights from multiple models are invaluable.",
-      result: "3x faster product iterations",
-      rating: 5,
-      avatar: "DK",
-    },
-  ];
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -53,7 +53,7 @@ const TestimonialsSection: React.FC = () => {
     }, 5000);
 
     return () => clearInterval(timer);
-  }, [testimonials.length]);
+  }, []);
 
   const nextTestimonial = () => {
     setCurrentIndex((prevIndex) => (prevIndex + 1) % testimonials.length);
@@ -84,8 +84,9 @@ const TestimonialsSection: React.FC = () => {
 
         <ScrollReveal delay={0.2}>
           <div className="relative p-8 md:p-12">
+            <LazyMotion features={domAnimation}>
             <AnimatePresence mode="wait">
-              <motion.div
+              <m.div
                 key={currentIndex}
                 initial={{ opacity: 0, x: 100 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -135,8 +136,9 @@ const TestimonialsSection: React.FC = () => {
                     </p>
                   </div>
                 </div>
-              </motion.div>
+              </m.div>
             </AnimatePresence>
+            </LazyMotion>
 
             {/* Navigation */}
             <div className="mt-12 flex items-center justify-center">
@@ -153,9 +155,11 @@ const TestimonialsSection: React.FC = () => {
 
               {/* Dots */}
               <div className="flex space-x-2">
-                {testimonials.map((_, index) => (
+                {testimonials.map((testimonial, index) => (
                   <button
-                    key={index}
+                    type="button"
+                    key={testimonial.name}
+                    aria-label={`Go to testimonial by ${testimonial.name}`}
                     onClick={() => setCurrentIndex(index)}
                     className={`h-2 w-2 rounded-full transition-all duration-300 ${
                       index === currentIndex

@@ -1,27 +1,23 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { ModelProvider } from "@/models/types";
 
-const STORAGE_KEY = "routerai-api-keys";
+const STORAGE_KEY = "routerai-api-keys:v1";
 
 type ProviderKeys = Partial<Record<ModelProvider, string>>;
 
 export function useApiKeys() {
-  const [keys, setKeys] = useState<ProviderKeys>({});
-
-  // Load from localStorage on mount
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const [keys, setKeys] = useState<ProviderKeys>(() => {
+    if (typeof window === "undefined") return {};
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setKeys(JSON.parse(stored) as ProviderKeys);
-      }
+      if (stored) return JSON.parse(stored) as ProviderKeys;
     } catch {
       // ignore parse errors
     }
-  }, []);
+    return {};
+  });
 
   const saveKey = useCallback((provider: ModelProvider, apiKey: string) => {
     setKeys((prev) => {

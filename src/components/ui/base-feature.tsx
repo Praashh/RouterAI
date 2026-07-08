@@ -19,9 +19,9 @@ export function Features() {
           </p>
         </div>
         <div className="mx-auto mt-8 grid max-w-sm gap-6 *:text-center md:mt-16 @min-4xl:max-w-full @min-4xl:grid-cols-3">
-          {features.map((feature, idx) => (
+          {features.map((feature) => (
             <Card
-              key={idx}
+              key={feature.title}
               className="group bg-muted/20 border-muted relative overflow-hidden border p-4 shadow-none"
             >
               <div className="bg-primary absolute -bottom-20 left-1/2 z-[-1] h-40 w-full -translate-x-1/2 translate-y-20 rounded-full opacity-0 blur-[4em] transition-all duration-700 group-hover:-translate-y-2 group-hover:opacity-90" />

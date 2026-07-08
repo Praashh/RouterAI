@@ -50,6 +50,13 @@ interface Message {
   content: string;
 }
 
+function handleStopListening() {
+  SpeechRecognition.stopListening();
+  toast.success("Stopped listening", {
+    description: "Processing your voice input...",
+  });
+}
+
 const UIInput = () => {
   const session = useSession();
   const router = useRouter();
@@ -58,13 +65,13 @@ const UIInput = () => {
     "text",
   );
   const [query, setQuery] = useState<string>("");
-  const [attachments, setAttachments] = useState<File[]>([]);
+  const attachmentsRef = useRef<File[]>([]);
   const [search, setSearch] = useState<boolean>(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [showWelcome, setShowWelcome] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const currentChatIdRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const welcomeSpokenRef = useRef(false);
@@ -418,11 +425,11 @@ const UIInput = () => {
 
     try {
       // If we already have a chatId (continuing conversation), reuse it
-      let chatId = currentChatId;
+      let chatId = currentChatIdRef.current;
       if (!chatId) {
         const result = await createChat.mutateAsync();
         chatId = result.chatId!;
-        setCurrentChatId(chatId);
+        currentChatIdRef.current = chatId;
       }
 
       const allMessages = [
@@ -483,13 +490,6 @@ const UIInput = () => {
     });
   };
 
-  const handleStopListening = () => {
-    SpeechRecognition.stopListening();
-    toast.success("Stopped listening", {
-      description: "Processing your voice input...",
-    });
-  };
-
   const toggleMode = () => {
     if (modeOfChatting === "voice" && speaking) {
       cancel();
@@ -514,7 +514,7 @@ const UIInput = () => {
     fileInput.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        setAttachments((prev) => [...prev, file]);
+        attachmentsRef.current = [...attachmentsRef.current, file];
       }
     };
     fileInput.click();
@@ -595,6 +595,7 @@ const UIInput = () => {
                                 <div>{match ? match[1] : "text"}</div>
                                 <div className="flex items-center gap-2">
                                   <button
+                                    type="button"
                                     onClick={toggleWrap}
                                     className={`hover:bg-muted/40 flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all duration-200`}
                                     aria-label="Toggle line wrapping"
@@ -613,6 +614,7 @@ const UIInput = () => {
                                     )}
                                   </button>
                                   <button
+                                    type="button"
                                     onClick={() => handleCopy(codeContent, codeContent)}
                                     className={`hover:bg-muted/40 sticky top-10 flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all duration-200`}
                                     aria-label="Copy code"
@@ -715,13 +717,15 @@ const UIInput = () => {
                   <div className="font-medium">
                     {message.role === "assistant" && (
                       <div className="invisible flex w-fit items-center gap-2 text-base font-semibold group-hover:visible">
-                        <button className="hover:bg-accent flex size-7 items-center justify-center rounded-lg">
+                        <button type="button" aria-label="Like response" className="hover:bg-accent flex size-7 items-center justify-center rounded-lg">
                           <ThumbsUpIcon weight="bold" />
                         </button>
-                        <button className="hover:bg-accent flex size-7 items-center justify-center rounded-lg">
+                        <button type="button" aria-label="Dislike response" className="hover:bg-accent flex size-7 items-center justify-center rounded-lg">
                           <ThumbsDownIcon weight="bold" />
                         </button>
                         <button
+                          type="button"
+                          aria-label="Copy message"
                           onClick={() => handleCopy(message.content, message.id)}
                           className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
                         >
@@ -733,6 +737,8 @@ const UIInput = () => {
                         </button>
                         {modeOfChatting === "voice" && (
                           <button
+                            type="button"
+                            aria-label={speaking ? "Stop reading" : "Read aloud"}
                             className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
                             onClick={() => {
                               if (speaking) {
@@ -756,6 +762,8 @@ const UIInput = () => {
                     )}
                     {message.role === "user" && (
                       <button
+                        type="button"
+                        aria-label="Copy message"
                         onClick={() => handleCopy(message.content, message.id)}
                         className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
                       >
@@ -819,6 +827,8 @@ const UIInput = () => {
                   {modeOfChatting === "voice" && (
                     <div className="bg-accent flex size-8 items-center justify-center rounded-lg border">
                       <button
+                        type="button"
+                        aria-label="Toggle voice input"
                         onClick={
                           listening ? handleStopListening : handleStartListening
                         }

@@ -1,7 +1,6 @@
 import type { Model } from "./types";
-import { ModelProvider, ModelCapability } from "./types";
-import { MODELS } from "./constants";
-import { DiamondIcon, StarIcon, CircleIcon } from "lucide-react";
+import { ModelProvider } from "./types";
+import { DiamondIcon } from "lucide-react";
 import React from "react";
 import { OpenAI } from "@/components/svgs/openai";
 import { StarFourIcon } from "@phosphor-icons/react/dist/ssr";
@@ -23,25 +22,3 @@ export function getModelProviderIcon(model: Model): React.ReactNode {
   }
 }
 
-export function estimateCost(modelId: string, tokenCount: number): number {
-  const model = MODELS.find((m) => m.id === modelId);
-  if (!model) return 0;
-
-  return (tokenCount / 1000) * model.pricePer1kTokens;
-}
-
-export function isModelCompatibleWithFeature(
-  modelId: string,
-  feature: string,
-): boolean {
-  const model = MODELS.find((m) => m.id === modelId);
-  if (!model) return false;
-
-  return model.capabilities.includes(feature as ModelCapability);
-}
-
-export function getModelsByProvider(provider: ModelProvider): Model[] {
-  return MODELS.filter(
-    (model) => model.provider === provider && model.isAvailable !== false,
-  );
-}

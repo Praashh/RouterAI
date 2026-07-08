@@ -1,6 +1,53 @@
 import React, { useState } from "react";
 import { Sparkles, Search, Code, BookOpen } from "lucide-react";
 
+const tabs = [
+  {
+    id: "create",
+    label: "Create",
+    icon: <Sparkles className="h-4 w-4" />,
+    content: [
+      "Write a short story about a robot discovering emotions",
+      "Help me outline a sci-fi novel set in a post-apocalyptic world",
+      "How many Rs are in the word 'strawberry'? ",
+      "Give me 5 creative writing prompts for flash fiction",
+    ],
+  },
+  {
+    id: "explore",
+    label: "Explore",
+    icon: <Search className="h-4 w-4" />,
+    content: [
+      "Analyze the themes in contemporary dystopian literature",
+      "Compare different narrative structures in modern novels",
+      "Explore the evolution of science fiction from the 1950s to today",
+      "Discuss the impact of AI on creative writing",
+    ],
+  },
+  {
+    id: "code",
+    label: "Code",
+    icon: <Code className="h-4 w-4" />,
+    content: [
+      "Build a React component for a text editor with syntax highlighting",
+      "Create a Python script to analyze writing patterns in text files",
+      "Develop a web app for collaborative story writing",
+      "Write a function to generate random plot elements for writers",
+    ],
+  },
+  {
+    id: "learn",
+    label: "Learn",
+    icon: <BookOpen className="h-4 w-4" />,
+    content: [
+      "Teach me the fundamentals of narrative structure",
+      "Explain different point-of-view techniques in storytelling",
+      "Help me understand character development arcs",
+      "Break down the elements of effective dialogue writing",
+    ],
+  },
+];
+
 const TabsSuggestion = ({
   suggestedInput,
   setSuggestedInput,
@@ -9,53 +56,6 @@ const TabsSuggestion = ({
   setSuggestedInput: any;
 }) => {
   const [activeTab, setActiveTab] = useState("create");
-
-  const tabs = [
-    {
-      id: "create",
-      label: "Create",
-      icon: <Sparkles className="h-4 w-4" />,
-      content: [
-        "Write a short story about a robot discovering emotions",
-        "Help me outline a sci-fi novel set in a post-apocalyptic world",
-        "How many Rs are in the word 'strawberry'? ",
-        "Give me 5 creative writing prompts for flash fiction",
-      ],
-    },
-    {
-      id: "explore",
-      label: "Explore",
-      icon: <Search className="h-4 w-4" />,
-      content: [
-        "Analyze the themes in contemporary dystopian literature",
-        "Compare different narrative structures in modern novels",
-        "Explore the evolution of science fiction from the 1950s to today",
-        "Discuss the impact of AI on creative writing",
-      ],
-    },
-    {
-      id: "code",
-      label: "Code",
-      icon: <Code className="h-4 w-4" />,
-      content: [
-        "Build a React component for a text editor with syntax highlighting",
-        "Create a Python script to analyze writing patterns in text files",
-        "Develop a web app for collaborative story writing",
-        "Write a function to generate random plot elements for writers",
-      ],
-    },
-    {
-      id: "learn",
-      label: "Learn",
-      icon: <BookOpen className="h-4 w-4" />,
-      content: [
-        "Teach me the fundamentals of narrative structure",
-        "Explain different point-of-view techniques in storytelling",
-        "Help me understand character development arcs",
-        "Break down the elements of effective dialogue writing",
-      ],
-    },
-  ];
 
   const activeTabData = tabs.find((tab) => tab.id === activeTab);
 
@@ -66,6 +66,7 @@ const TabsSuggestion = ({
         <div className="mb-4 flex items-center justify-center gap-4">
           {tabs.map((tab) => (
             <button
+              type="button"
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${
@@ -82,9 +83,10 @@ const TabsSuggestion = ({
 
         {/* Tab Content */}
         <div className="mx-auto flex max-w-md flex-col items-center space-y-2">
-          {activeTabData?.content.map((item, index) => (
-            <div
-              key={index}
+          {activeTabData?.content.map((item) => (
+            <button
+              type="button"
+              key={item}
               onClick={() => {
                 if (suggestedInput || suggestedInput === "") {
                   setSuggestedInput(item);
@@ -95,7 +97,7 @@ const TabsSuggestion = ({
               <p className="text-card-foreground text-sm leading-relaxed">
                 {item}
               </p>
-            </div>
+            </button>
           ))}
         </div>
 

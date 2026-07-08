@@ -73,9 +73,7 @@ export function ModelSelector({
   disabled = false,
   showIcons = true,
 }: ModelSelectorProps) {
-  const [selectedModel, setSelectedModel] = useState<string>(
-    value ?? DEFAULT_MODEL_ID,
-  );
+  const selectedModel = value ?? DEFAULT_MODEL_ID;
   const [isOpen, setIsOpen] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState<string>("");
   const [dialogProvider, setDialogProvider] = useState<ModelProvider | null>(
@@ -86,12 +84,6 @@ export function ModelSelector({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { hasKey, saveKey, removeKey } = useApiKeys();
-
-  useEffect(() => {
-    if (value && value !== selectedModel) {
-      setSelectedModel(value);
-    }
-  }, [value]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -118,7 +110,6 @@ export function ModelSelector({
 
   const handleSelect = useCallback(
     (modelId: string) => {
-      setSelectedModel(modelId);
       onValueChange?.(modelId);
       setIsOpen(false);
     },
@@ -206,6 +197,7 @@ export function ModelSelector({
             <TooltipTrigger asChild>
               <button
                 type="button"
+                aria-label="Manage API key"
                 onClick={(e) => openKeyDialog(e, model.provider)}
                 className={cn(
                   "rounded-md p-0.5 transition-colors hover:bg-white/10",
@@ -373,6 +365,7 @@ export function ModelSelector({
               />
               <button
                 type="button"
+                aria-label={showKey ? "Hide API key" : "Show API key"}
                 onClick={() => setShowKey(!showKey)}
                 className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2.5 -translate-y-1/2 transition-colors"
               >
