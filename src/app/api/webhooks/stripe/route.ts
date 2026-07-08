@@ -42,26 +42,35 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log('🎉 Checkout session completed:', session.id);
-        console.log('Customer:', session.customer);
-        console.log('Subscription:', session.subscription);
-        console.log('Amount:', session.amount_total);
-        console.log('User ID:', session.metadata?.userId);
-        console.log("💙 session", session);
-        
-       await db.subscription.create({
-        data: {
-          userId: session.metadata?.userId!,
-          orderId: session.id,
-          plan: "PRO",
-          paymentId: session.invoice as string,
-          createdAt: new Date(),
-          expiresAt: new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000) //  30 days after the subscription is created
+        console.log('Checkout session completed:', session.id);
+
+        const userId = session.metadata?.userId;
+        if (!userId) {
+          console.error('Missing userId in session metadata');
+          return new NextResponse('Missing userId', { status: 400 });
         }
-       })
-        
-       // send email to user
-       await sendEmailNotification(session.customer_details?.email!);
+
+        // Idempotency: skip if already processed
+        const existing = await db.subscription.findFirst({ where: { orderId: session.id } });
+        if (existing) {
+          console.log('Subscription already processed for session:', session.id);
+          break;
+        }
+
+        await db.subscription.create({
+          data: {
+            userId,
+            orderId: session.id,
+            plan: "PRO",
+            paymentId: session.invoice ? String(session.invoice) : session.id,
+            createdAt: new Date(),
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          }
+        });
+
+        if (session.customer_details?.email) {
+          await sendEmailNotification(session.customer_details.email);
+        }
         break;
       }
       

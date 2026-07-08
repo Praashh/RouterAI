@@ -1,8 +1,9 @@
+import { type NextRequest } from "next/server";
 import { auth } from "@/server/auth";
 import { fetchChatCompletion } from "@/models/service";
 import { DEFAULT_MODEL_ID, getModelById } from "@/models/constants";
 import { db } from "@/server/db";
-import { getApiKeyFromCookies } from "@/lib/api-key-cookies";
+import { COOKIE_PREFIX } from "@/lib/api-key-cookies";
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -25,17 +26,32 @@ interface ChatErrorResponse {
   message?: string;
 }
 
-export async function POST(req: Request): Promise<Response> {
+export async function POST(req: NextRequest): Promise<Response> {
   try {
     const authResult = await auth();
     if (!authResult?.user) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const { messages, model = DEFAULT_MODEL_ID, chatId } =
-      (await req.json()) as ChatPayload;
+    const {
+      messages,
+      model = DEFAULT_MODEL_ID,
+      chatId,
+    } = (await req.json()) as ChatPayload;
 
     const userContent = messages[messages.length - 1]?.content ?? "";
+
+    // Verify chat belongs to the authenticated user
+    const chat = await db.chat.findUnique({
+      where: { id: chatId },
+      select: { title: true, userId: true },
+    });
+    if (!chat || chat.userId !== authResult.user.id) {
+      return new Response(
+        JSON.stringify({ error: { message: "Chat not found", type: "auth_error" } }),
+        { status: 403, headers: { "Content-Type": "application/json" } },
+      );
+    }
 
     // Save user message
     await db.message.create({
@@ -45,10 +61,7 @@ export async function POST(req: Request): Promise<Response> {
         role: "USER",
       },
     });
-
-    // Auto-generate title from first user message if chat has no title
-    const chat = await db.chat.findUnique({ where: { id: chatId }, select: { title: true } });
-    if (!chat?.title && userContent) {
+    if (!chat.title && userContent) {
       await db.chat.update({
         where: { id: chatId },
         data: { title: userContent.slice(0, 100) },
@@ -65,7 +78,7 @@ export async function POST(req: Request): Promise<Response> {
 
     // Read user API key from HttpOnly cookie if needed
     const userApiKey = modelInfo.requiresApiKey
-      ? await getApiKeyFromCookies(modelInfo.provider)
+      ? req.cookies.get(`${COOKIE_PREFIX}${modelInfo.provider}`)?.value
       : undefined;
 
     // Call the model FIRST so we can return a proper HTTP error if it fails
@@ -78,7 +91,10 @@ export async function POST(req: Request): Promise<Response> {
         userApiKey,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to communicate with model";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to communicate with model";
       return new Response(
         JSON.stringify({ error: { message, type: "model_error" } }),
         { status: 502, headers: { "Content-Type": "application/json" } },
@@ -94,10 +110,15 @@ export async function POST(req: Request): Promise<Response> {
         // ignore parse errors
       }
       const errorMessage =
-        errorBody?.error?.message ?? errorBody?.message ?? modelResponse.statusText;
+        errorBody?.error?.message ??
+        errorBody?.message ??
+        modelResponse.statusText;
       return new Response(
         JSON.stringify({ error: { message: errorMessage, type: "api_error" } }),
-        { status: modelResponse.status, headers: { "Content-Type": "application/json" } },
+        {
+          status: modelResponse.status,
+          headers: { "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -112,7 +133,7 @@ export async function POST(req: Request): Promise<Response> {
 
     void (async () => {
       let accumulatedContent = "";
-      
+
       try {
         const reader = modelResponse.body?.getReader();
         if (!reader) {
@@ -147,7 +168,7 @@ export async function POST(req: Request): Promise<Response> {
                   data: { updatedAt: new Date() },
                 });
               }
-              
+
               await writer.write(encoder.encode("data: [DONE]\n\n"));
               await writer.close();
               break;
@@ -156,15 +177,15 @@ export async function POST(req: Request): Promise<Response> {
             // Accumulate content for database storage
             const chunk = new TextDecoder().decode(value);
             const lines = chunk.split("\n");
-            
+
             for (const line of lines) {
               if (line.trim() === "") continue;
-              
+
               if (line.startsWith("data: ")) {
                 const data = line.substring(6);
-                
+
                 if (data === "[DONE]") continue;
-                
+
                 try {
                   const parsedData = JSON.parse(data) as {
                     choices?: Array<{
@@ -173,7 +194,7 @@ export async function POST(req: Request): Promise<Response> {
                       };
                     }>;
                   };
-                  
+
                   const content = parsedData.choices?.[0]?.delta?.content;
                   if (content) {
                     accumulatedContent += content;

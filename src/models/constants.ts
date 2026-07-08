@@ -93,6 +93,22 @@ export const MODELS: Model[] = [
     requiresApiKey: true,
   },
   {
+    id: "gemini-2.5-flash",
+    name: "Gemini 2.5 Flash",
+    provider: ModelProvider.GOOGLE,
+    description:
+      "Google's latest fast-thinking model with improved capabilities",
+    maxTokens: 1048576,
+    pricePer1kTokens: 0.00015,
+    capabilities: [
+      ModelCapability.TEXT,
+      ModelCapability.CODE,
+      ModelCapability.FUNCTION_CALLING,
+    ],
+    isAvailable: true,
+    requiresApiKey: true,
+  },
+  {
     id: "anthropic/claude-3.5-sonnet",
     name: "Claude 3.5 Sonnet",
     provider: ModelProvider.ANTHROPIC,
@@ -170,5 +186,7 @@ export const getModelById = (id: string): Model | undefined => {
 
 export const isImageModel = (id: string): boolean => {
   const model = getModelById(id);
-  return model?.capabilities.includes(ModelCapability.IMAGE_GENERATION) ?? false;
+  return (
+    model?.capabilities.includes(ModelCapability.IMAGE_GENERATION) ?? false
+  );
 };

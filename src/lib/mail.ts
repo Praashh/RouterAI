@@ -7,7 +7,7 @@ const app_password: string = env.MAIL_APP_PASSWORD!;
 
 export const transporter = nodemailer.createTransport({
   service: "gmail",
-  host: "smt.gamil.com",
+  host: "smtp.gmail.com",
   port: 587,
   secure: false,
   auth: {

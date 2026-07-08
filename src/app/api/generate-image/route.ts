@@ -153,17 +153,21 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
+    // Verify chat belongs to the authenticated user
+    const chat = await db.chat.findUnique({
+      where: { id: chatId },
+      select: { title: true, userId: true },
+    });
+    if (!chat || chat.userId !== authResult.user.id) {
+      return Response.json({ error: "Chat not found" }, { status: 403 });
+    }
+
     // Save user message
     await db.message.create({
       data: { chatId, content: prompt, role: "USER" },
     });
 
-    // Auto-generate title
-    const chat = await db.chat.findUnique({
-      where: { id: chatId },
-      select: { title: true },
-    });
-    if (!chat?.title) {
+    if (!chat.title) {
       await db.chat.update({
         where: { id: chatId },
         data: { title: prompt.slice(0, 100) },

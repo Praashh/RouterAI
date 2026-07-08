@@ -16,13 +16,14 @@ Thank you for your feedback!
 `;
 
 export const feedbackRouter = createTRPCRouter({
-  createFeedback: publicProcedure.input(z.object({ name: z.string(), message: z.string() })).mutation(async ({  input }) => {
+  createFeedback: publicProcedure.input(z.object({ name: z.string().max(100), message: z.string().max(2000) })).mutation(async ({  input }) => {
+    const sanitize = (s: string) => s.replace(/[*_~`@]/g, "");
 
     await fetch(env.WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        content: contentTemplate.replace("{name}", input.name).replace("{message}", input.message),
+        content: contentTemplate.replace("{name}", sanitize(input.name)).replace("{message}", sanitize(input.message)),
       }),
     });
 

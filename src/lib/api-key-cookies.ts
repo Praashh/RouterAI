@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { type ModelProvider } from "@/models/types";
 
-const COOKIE_PREFIX = "routerai-apikey-";
+export const COOKIE_PREFIX = "routerai-apikey-";
 
 export async function getApiKeyFromCookies(
   provider: ModelProvider,
