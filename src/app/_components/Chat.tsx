@@ -2,52 +2,24 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import {
-  MicrophoneIcon,
-  SpinnerGapIcon,
-  CopyIcon,
-  ThumbsDownIcon,
-  ThumbsUpIcon,
-  SpeakerHighIcon,
-  SpeakerXIcon,
-  CheckIcon,
-  CheckCircleIcon,
-  ArrowsLeftRightIcon,
-} from "@phosphor-icons/react";
-import ReactMarkdown from "react-markdown";
-import SyntaxHighlighter from "react-syntax-highlighter";
-import remarkGfm from "remark-gfm";
-import { Geist_Mono } from "next/font/google";
+import { MicrophoneIcon, SpinnerGapIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { ModelSelector } from "@/components/ui/model-selector";
-import { getModelById, isImageModel } from "@/models/constants";
 import { useModel } from "@/hooks/use-model";
-import { useApiKeys } from "@/hooks/use-api-keys";
+import { useStreamChat } from "@/hooks/use-stream-chat";
+import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
+import { MessageActions } from "@/components/chat/MessageActions";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 import { useSpeechSynthesis } from "react-speech-kit";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
-import { Globe, Loader2Icon, Paperclip, WrapText } from "lucide-react";
-import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
-import { api } from "@/trpc/react";
-import { useRouter } from "next/navigation";
-
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  preload: true,
-  display: "swap",
-});
+import { Globe, Loader2Icon, Paperclip } from "lucide-react";
+import { api } from "@/trpc/client";
+import { isImageModel } from "@/models/constants";
 
 interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-}
-
-interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
@@ -63,7 +35,7 @@ function handleStopListening() {
 const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
   const { modelId: model, setModelId: setModel } = useModel();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [search, setSearch] = useState<boolean>(false);
+  const [search, setSearch] = useState(false);
   const [input, setInput] = useState(() => {
     if (typeof window === "undefined") return "";
     const query = localStorage.getItem("chatQuery");
@@ -74,33 +46,30 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
     return "";
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [modeOfChatting, setModeOfChatting] = useState<"text" | "voice">(
-    "text",
-  );
+  const [modeOfChatting, setModeOfChatting] = useState<"text" | "voice">("text");
   const [showWelcome, setShowWelcome] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
   const welcomeSpokenRef = useRef(false);
   const [isWrapped, setIsWrapped] = useState(false);
   const { resolvedTheme } = useTheme();
   const queryRef = useRef<string>("");
   const attachmentsRef = useRef<File[]>([]);
-  const [chatId, setChatId] = useState<string>(initialChatId);
-  const { getKey } = useApiKeys();
+  const [chatId, setChatId] = useState(initialChatId);
   const utils = api.useUtils();
 
-  const getUserApiKey = useCallback(() => {
-    const modelInfo = getModelById(model);
-    if (modelInfo?.requiresApiKey) {
-      return getKey(modelInfo.provider);
-    }
-    return undefined;
-  }, [model, getKey]);
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
 
-  const {data: chatMessages} = api.chat.getChatMessages.useQuery({
-    chatId: chatId,
+  const { sendMessage, abortControllerRef } = useStreamChat({
+    model,
+    setMessages,
+    setIsLoading,
+    onScroll: scrollToBottom,
   });
+
+  const { data: chatMessages } = api.chat.getChatMessages.useQuery({ chatId });
 
   useEffect(() => {
     setChatId(initialChatId);
@@ -108,302 +77,64 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
 
   useEffect(() => {
     if (chatMessages) {
-      setMessages(chatMessages.messages.map((message) => ({
-        id: message.id,
-        role: message.role === "USER" ? "user" : "assistant",
-        content: message.content,
-      })));
+      setMessages(
+        chatMessages.messages.map((message) => ({
+          id: message.id,
+          role: message.role === "USER" ? ("user" as const) : ("assistant" as const),
+          content: message.content,
+        })),
+      );
+      requestAnimationFrame(scrollToBottom);
     }
-  }, [chatMessages]);
+  }, [chatMessages, scrollToBottom]);
 
-  const toggleWrap = useCallback(() => {
-    setIsWrapped((prev) => !prev);
-  }, []);
+  const toggleWrap = useCallback(() => setIsWrapped((prev) => !prev), []);
 
-  const {
-    transcript,
-    listening,
-    resetTranscript,
-    browserSupportsSpeechRecognition,
-  } = useSpeechRecognition();
+  const { transcript, listening, resetTranscript, browserSupportsSpeechRecognition } =
+    useSpeechRecognition();
 
-  const {
-    speak,
-    cancel,
-    speaking,
-    supported: ttsSupported,
-    voices,
-  } = useSpeechSynthesis();
-  const [selectedVoice, setSelectedVoice] =
-    useState<SpeechSynthesisVoice | null>(null);
+  const { speak, cancel, speaking, supported: ttsSupported, voices } = useSpeechSynthesis();
+  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
 
   useEffect(() => {
-    if (!browserSupportsSpeechRecognition) {
+    if (!browserSupportsSpeechRecognition)
       toast.error("Your browser doesn't support speech recognition.");
-    }
   }, [browserSupportsSpeechRecognition]);
 
   useEffect(() => {
-    if (modeOfChatting === "voice" && !ttsSupported) {
-      toast.error("Text-to-speech not supported in your browser");
-      setModeOfChatting("text");
-    }
-  }, [modeOfChatting, ttsSupported]);
-
-  useEffect(() => {
-    if (ttsSupported && voices.length > 0) {
-      const defaultVoice = voices.find((v) => v.default) || voices[0];
-      setSelectedVoice(defaultVoice!);
-    }
+    if (ttsSupported && voices.length > 0)
+      setSelectedVoice(voices.find((v) => v.default) ?? voices[0]!);
   }, [voices, ttsSupported]);
 
   useEffect(() => {
-    if (listening) {
-      queryRef.current = transcript;
-    }
+    if (listening) queryRef.current = transcript;
   }, [listening, transcript]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const processStream = async (response: Response, userMessage: string) => {
-    if (!response.ok) {
-      const modelInfo = getModelById(model);
-      const modelName = modelInfo?.name ?? model;
-      let errorDetail = response.statusText;
-
-      try {
-        const errorBody = await response.json() as { error?: { message?: string }; message?: string };
-        errorDetail = errorBody?.error?.message ?? errorBody?.message ?? response.statusText;
-      } catch {
-        // ignore parse errors
-      }
-
-      if (response.status === 401 || response.status === 403) {
-        toast.error(`Invalid API key for ${modelName}`, {
-          description: "Please check your API key and try again.",
-        });
-      } else if (response.status === 429) {
-        toast.error(`Rate limit exceeded for ${modelName}`, {
-          description: "You've exceeded your quota. Please check your plan and billing details.",
-        });
-      } else {
-        toast.error(`${modelName} failed (${response.status})`, {
-          description: errorDetail,
-        });
-      }
-
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const reader = response.body?.getReader();
-      if (!reader) {
-        console.error("No reader available");
-        setIsLoading(false);
-        return;
-      }
-
-      const tempMessageId = `ai-${Date.now()}`;
-
-      setMessages((prev) => [
-        ...prev,
-        { id: tempMessageId, role: "assistant", content: "" },
-      ]);
-
-      let accumulatedContent = "";
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-
-        if (done) {
-          // console.log("Stream complete");
-          break;
-        }
-
-        const chunk = new TextDecoder().decode(value);
-        // console.log("Received chunk:", chunk);
-
-        buffer += chunk;
-
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (line.trim() === "") continue;
-
-          if (line.startsWith("data: ")) {
-            const data = line.substring(6);
-
-            if (data === "[DONE]") {
-              console.log("Stream ended with [DONE]");
-              continue;
-            }
-
-            try {
-              // console.log("Parsing JSON:", data);
-              const parsedData = JSON.parse(data) as {
-                choices?: Array<{
-                  delta?: {
-                    content?: string;
-                  };
-                }>;
-              };
-
-              const content = parsedData.choices?.[0]?.delta?.content;
-              if (content) {
-                // console.log("Received content:", content);
-                accumulatedContent += content;
-
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === tempMessageId
-                      ? { ...msg, content: accumulatedContent }
-                      : msg,
-                  ),
-                );
-              }
-            } catch (e) {
-              console.error("Error parsing JSON:", e, line);
-            }
-          }
-        }
-      }
-
-      // console.log("Saving chat to database:", userMessage, accumulatedContent);
-    } catch (error) {
-      console.error("Error processing stream:", error);
-    } finally {
-      setIsLoading(false);
-      abortControllerRef.current = null;
-    }
-  };
-
-  const processImageGeneration = async (
-    prompt: string,
-    targetChatId: string,
-  ) => {
-    const tempMessageId = `ai-${Date.now()}`;
-    setMessages((prev) => [
-      ...prev,
-      { id: tempMessageId, role: "assistant", content: "Generating image..." },
-    ]);
-
-    try {
-      const response = await fetch("/api/generate-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          model,
-          chatId: targetChatId,
-          userApiKey: getUserApiKey(),
-        }),
-        signal: abortControllerRef.current?.signal,
-      });
-
-      const data = (await response.json()) as {
-        content?: string;
-        error?: string;
-      };
-
-      if (!response.ok || data.error) {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === tempMessageId
-              ? { ...msg, content: `Error: ${data.error ?? "Image generation failed"}` }
-              : msg,
-          ),
-        );
-        return;
-      }
-
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === tempMessageId
-            ? { ...msg, content: data.content ?? "" }
-            : msg,
-        ),
-      );
-    } catch (error) {
-      if ((error as Error).name !== "AbortError") {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === tempMessageId
-              ? { ...msg, content: "Error: Failed to generate image" }
-              : msg,
-          ),
-        );
-      }
-    } finally {
-      setIsLoading(false);
-      abortControllerRef.current = null;
-    }
-  };
 
   const handleCreateChat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!queryRef.current.trim() || isLoading) return;
-
     setShowWelcome(false);
-
     const currentQuery = queryRef.current.trim();
-
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: currentQuery,
-    };
-
+    const userMessage: ChatMessage = { id: `user-${Date.now()}`, role: "user", content: currentQuery };
     const updatedMessages = [...messages, userMessage];
-
     queryRef.current = "";
     setMessages(updatedMessages);
     setIsLoading(true);
 
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    abortControllerRef.current = new AbortController();
-
     try {
       if (isImageModel(model)) {
         void (async () => {
-          await processImageGeneration(currentQuery, chatId);
+          await sendMessage(updatedMessages, chatId);
           void utils.chat.getAllChats.invalidate();
         })();
       } else {
         setTimeout(() => {
           void (async () => {
             try {
-              const response = await fetch("/api/ask", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
-                  model: model,
-                  chatId: chatId,
-                  userApiKey: getUserApiKey(),
-                }),
-                signal: abortControllerRef.current?.signal,
-              });
-
-              await processStream(response, currentQuery);
+              await sendMessage(updatedMessages, chatId);
               void utils.chat.getAllChats.invalidate();
             } catch (error) {
-              if ((error as Error).name !== "AbortError") {
-                console.error("Error sending message:", error);
-              }
+              if ((error as Error).name !== "AbortError") console.error("Error:", error);
               setIsLoading(false);
             }
           })();
@@ -416,123 +147,61 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
   };
 
   useEffect(() => {
-    if (
-      showWelcome &&
-      messages.length === 0 &&
-      modeOfChatting === "voice" &&
-      ttsSupported &&
-      selectedVoice &&
-      !welcomeSpokenRef.current
-    ) {
+    if (showWelcome && messages.length === 0 && modeOfChatting === "voice" && ttsSupported && selectedVoice && !welcomeSpokenRef.current) {
       welcomeSpokenRef.current = true;
-      speak({
-        text: `Hello mate, how may I help you today?`,
-        voice: selectedVoice,
-      });
+      speak({ text: "Hello mate, how may I help you today?", voice: selectedVoice });
     }
-  }, [
-    showWelcome,
-    messages.length,
-    modeOfChatting,
-    ttsSupported,
-    selectedVoice,
-    speak,
-  ]);
+  }, [showWelcome, messages.length, modeOfChatting, ttsSupported, selectedVoice, speak]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!input.trim() || isLoading) return;
-
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: input,
-    };
-
-    const currentMessage = input.trim();
+    const userMessage: ChatMessage = { id: `user-${Date.now()}`, role: "user", content: input };
     const updatedMessages = [...messages, userMessage];
-
     setMessages(updatedMessages);
     setInput("");
     setIsLoading(true);
 
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    abortControllerRef.current = new AbortController();
-
     try {
-      if (isImageModel(model)) {
-        await processImageGeneration(currentMessage, chatId);
-      } else {
-        const response = await fetch("/api/ask", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
-            model: model,
-            chatId: chatId,
-            userApiKey: getUserApiKey(),
-          }),
-          signal: abortControllerRef.current.signal,
-        });
-
-        await processStream(response, currentMessage);
-      }
-      // Invalidate sidebar so it reflects updated chat
+      await sendMessage(updatedMessages, chatId);
       void utils.chat.getAllChats.invalidate();
     } catch (error) {
-      if ((error as Error).name !== "AbortError") {
-        console.error("Error sending message:", error);
-      }
+      if ((error as Error).name !== "AbortError") console.error("Error:", error);
       setIsLoading(false);
     }
   };
 
-
   const handleStartListening = () => {
     resetTranscript();
     SpeechRecognition.startListening({ continuous: true });
-    toast.success("Listening...", {
-      description: "Speak now...",
-      duration: 5000,
-    });
+    toast.success("Listening...", { description: "Speak now...", duration: 5000 });
   };
 
   const toggleMode = () => {
-    if (modeOfChatting === "voice" && speaking) {
-      cancel();
+    if (modeOfChatting === "voice" && speaking) cancel();
+    const newMode = modeOfChatting === "text" ? "voice" : "text";
+    if (newMode === "voice" && !ttsSupported) {
+      toast.error("Text-to-speech not supported in your browser");
+      return;
     }
-    setModeOfChatting(modeOfChatting === "text" ? "voice" : "text");
+    setModeOfChatting(newMode);
   };
 
   const handleCopy = async (content: string, id: string) => {
-    try {
-      await navigator.clipboard.writeText(content);
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 2000); // Reset after 2s
-    } catch (err) {
-      console.error("Failed to copy: ", err);
-    }
+    try { await navigator.clipboard.writeText(content); setCopiedId(id); setTimeout(() => setCopiedId(null), 2000); }
+    catch (err) { console.error("Failed to copy: ", err); }
   };
-
 
   const handleFileInput = () => {
-    const fileInput = document.createElement("input");
-    fileInput.type = "file";
-    fileInput.accept = "image/*";
-    fileInput.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        attachmentsRef.current = [...attachmentsRef.current, file];
-      }
-    };
-    fileInput.click();
+    const fi = document.createElement("input"); fi.type = "file"; fi.accept = "image/*";
+    fi.onchange = (e) => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) attachmentsRef.current = [...attachmentsRef.current, f]; };
+    fi.click();
   };
+
+  const handleSpeak = useCallback(
+    (text: string) => { if (ttsSupported && selectedVoice) speak({ text, voice: selectedVoice }); },
+    [ttsSupported, selectedVoice, speak],
+  );
 
   return (
     <div className="h-[96vh] w-full">
@@ -541,248 +210,26 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
           <div className="mx-auto w-full max-w-4xl py-4">
             {messages.length === 0 ? (
               <div className="text-muted-foreground flex h-[50vh] items-center justify-center">
-                  <Loader2Icon className="animate-spin" />                
+                <Loader2Icon className="animate-spin" />
               </div>
             ) : (
               <div className="no-scrollbar mt-6 flex h-full w-full flex-1 flex-col gap-4 overflow-y-auto px-4 pt-4 pb-10 md:px-8">
                 <div className="mx-auto h-full w-full max-w-4xl">
                   {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`group mb-8 flex w-full flex-col ${message.role === "assistant" ? "items-start" : "items-end"} gap-2`}
-                    >
-                      <div
-                        className={cn(
-                          "prose dark:prose-invert max-w-none rounded-lg px-4 py-2",
-                          message.role === "user"
-                            ? "bg-accent/40 w-fit max-w-full font-medium"
-                            : "w-full p-0",
-                        )}
-                      >
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            code(props) {
-                              const { children, className, ...rest } = props;
-                              const match = /language-(\w+)/.exec(
-                                className ?? "",
-                              );
-                              const isInline = !match;
-                              const codeContent = Array.isArray(children)
-                                ? children.join("")
-                                : typeof children === "string"
-                                  ? children
-                                  : "";
-
-                              return isInline ? (
-                                <code
-                                  className={cn(
-                                    "bg-accent rounded-sm px-1 py-0.5 text-sm",
-                                    geistMono.className,
-                                  )}
-                                  {...rest}
-                                >
-                                  {children}
-                                </code>
-                              ) : (
-                                <div
-                                  className={`${geistMono.className} my-4 overflow-hidden rounded-md`}
-                                >
-                                  <div className="bg-accent flex items-center justify-between px-4 py-2 text-sm">
-                                    <div>{match ? match[1] : "text"}</div>
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={toggleWrap}
-                                        className={`hover:bg-muted/40 flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all duration-200`}
-                                        aria-label="Toggle line wrapping"
-                                      >
-                                        {isWrapped ? (
-                                          <>
-                                            <ArrowsLeftRightIcon
-                                              weight="bold"
-                                              className="h-3 w-3"
-                                            />
-                                          </>
-                                        ) : (
-                                          <>
-                                            <WrapText className="h-3 w-3" />
-                                          </>
-                                        )}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleCopy(codeContent, codeContent)}
-                                        className={`hover:bg-muted/40 sticky top-10 flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all duration-200`}
-                                        aria-label="Copy code"
-                                      >
-                                        {copiedId === codeContent ? (
-                                          <>
-                                            <CheckCircleIcon
-                                              weight="bold"
-                                              className="size-4"
-                                            />
-                                          </>
-                                        ) : (
-                                          <>
-                                            <CopyIcon className="size-4" />
-                                          </>
-                                        )}
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <SyntaxHighlighter
-                                    language={match ? match[1] : "text"}
-                                    style={atomOneDark}
-                                    customStyle={{
-                                      margin: 0,
-                                      padding: "1rem",
-                                      backgroundColor:
-                                        resolvedTheme === "dark"
-                                          ? "#141414"
-                                          : "#f5f5f5",
-                                      color:
-                                        resolvedTheme === "dark"
-                                          ? "#e5e5e5"
-                                          : "#171717",
-                                      borderRadius: 0,
-                                      borderBottomLeftRadius: "0.375rem",
-                                      borderBottomRightRadius: "0.375rem",
-                                      fontSize: "1.2rem",
-                                      fontFamily: `var(--font-geist-mono), ${geistMono.style.fontFamily}`,
-                                    }}
-                                    wrapLongLines={isWrapped}
-                                    codeTagProps={{
-                                      style: {
-                                        fontFamily: `var(--font-geist-mono), ${geistMono.style.fontFamily}`,
-                                        fontSize: "0.85em",
-                                        whiteSpace: isWrapped
-                                          ? "pre-wrap"
-                                          : "pre",
-                                        overflowWrap: isWrapped
-                                          ? "break-word"
-                                          : "normal",
-                                        wordBreak: isWrapped
-                                          ? "break-word"
-                                          : "keep-all",
-                                      },
-                                    }}
-                                    PreTag="div"
-                                  >
-                                    {codeContent}
-                                  </SyntaxHighlighter>
-                                </div>
-                              );
-                            },
-                            strong: (props) => (
-                              <span className="font-bold">
-                                {props.children}
-                              </span>
-                            ),
-                            a: (props) => (
-                              <a
-                                className="text-primary underline"
-                                href={props.href}
-                              >
-                                {props.children}
-                              </a>
-                            ),
-                            h1: (props) => (
-                              <h1 className="my-4 text-2xl font-bold">
-                                {props.children}
-                              </h1>
-                            ),
-                            h2: (props) => (
-                              <h2 className="my-3 text-xl font-bold">
-                                {props.children}
-                              </h2>
-                            ),
-                            h3: (props) => (
-                              <h3 className="my-2 text-lg font-bold">
-                                {props.children}
-                              </h3>
-                            ),
-                            img: (props) => (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={props.src}
-                                alt={props.alt ?? "Generated image"}
-                                className="my-4 max-w-full rounded-lg border shadow-md"
-                              />
-                            ),
-                          }}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
+                    <div key={message.id} className={`group mb-8 flex w-full flex-col ${message.role === "assistant" ? "items-start" : "items-end"} gap-2`}>
+                      <div className={cn("prose dark:prose-invert max-w-none rounded-lg px-4 py-2", message.role === "user" ? "bg-accent/40 w-fit max-w-full font-medium" : "w-full p-0")}>
+                        <MarkdownRenderer content={message.content} isWrapped={isWrapped} onToggleWrap={toggleWrap} copiedId={copiedId} onCopy={handleCopy} resolvedTheme={resolvedTheme} />
                       </div>
                       <div className="font-medium">
-                        {message.role === "assistant" && (
-                          <div className="invisible flex w-fit items-center gap-2 text-base font-semibold group-hover:visible">
-                            <button type="button" aria-label="Like response" className="hover:bg-accent flex size-7 items-center justify-center rounded-lg">
-                              <ThumbsUpIcon weight="bold" />
-                            </button>
-                            <button type="button" aria-label="Dislike response" className="hover:bg-accent flex size-7 items-center justify-center rounded-lg">
-                              <ThumbsDownIcon weight="bold" />
-                            </button>
-                            <button
-                              type="button"
-                              aria-label="Copy message"
-                              onClick={() => handleCopy(message.content, message.id)}
-                              className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
-                            >
-                              {copiedId !== message.id ? (
-                                <CopyIcon weight="bold" />
-                              ) : (
-                                <CheckIcon weight="bold" />
-                              )}
-                            </button>
-                            {modeOfChatting === "voice" && (
-                              <button
-                                type="button"
-                                aria-label={speaking ? "Stop reading" : "Read aloud"}
-                                className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
-                                onClick={() => {
-                                  if (speaking) {
-                                    cancel();
-                                  } else if (ttsSupported && selectedVoice) {
-                                    speak({
-                                      text: message.content,
-                                      voice: selectedVoice,
-                                    });
-                                  }
-                                }}
-                              >
-                                {speaking ? (
-                                  <SpeakerXIcon weight="bold" />
-                                ) : (
-                                  <SpeakerHighIcon weight="bold" />
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        )}
-                        {message.role === "user" && (
-                          <button
-                            type="button"
-                            aria-label="Copy message"
-                            onClick={() => handleCopy(message.content, message.id)}
-                            className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
-                          >
-                            {copiedId !== message.id ? (
-                              <CopyIcon weight="bold" />
-                            ) : (
-                              <CheckIcon weight="bold" />
-                            )}
-                          </button>
-                        )}
+                        <MessageActions role={message.role} messageId={message.id} content={message.content} copiedId={copiedId} onCopy={handleCopy} modeOfChatting={modeOfChatting} speaking={speaking} onSpeak={handleSpeak} onCancelSpeak={cancel} />
                       </div>
                     </div>
                   ))}
                   {isLoading && (
                     <div className="flex h-5 items-start justify-start space-x-2">
-                      <div className="bg-accent h-2.5 w-2.5 animate-bounce rounded-full [animation-delay:0s]"></div>
-                      <div className="bg-accent h-2.5 w-2.5 animate-bounce rounded-full [animation-delay:0.2s] [animation-direction:reverse]"></div>
-                      <div className="bg-accent h-2.5 w-2.5 animate-bounce rounded-full [animation-delay:0.4s]"></div>
+                      <div className="bg-accent h-2.5 w-2.5 animate-bounce rounded-full [animation-delay:0s]" />
+                      <div className="bg-accent h-2.5 w-2.5 animate-bounce rounded-full [animation-delay:0.2s] [animation-direction:reverse]" />
+                      <div className="bg-accent h-2.5 w-2.5 animate-bounce rounded-full [animation-delay:0.4s]" />
                     </div>
                   )}
                   <div ref={messagesEndRef} />
@@ -793,84 +240,32 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
           </div>
         </div>
 
-        {/* Input Form */}
         <div className="bg-muted border-border/20 absolute bottom-0 w-full rounded-xl border-t p-2">
           <div className="mx-auto w-full max-w-4xl">
-            <form
-              onSubmit={handleSubmit}
-              className="bg-accent/30 flex w-full flex-col rounded-xl p-3 pb-3"
-            >
-              <Textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void handleSubmit(e as any);
-                  }
-                }}
-                placeholder="Ask whatever you want to be"
-                className="h-[2rem] resize-none rounded-none border-none bg-transparent px-0 py-1 shadow-none ring-0 focus-visible:ring-0 dark:bg-transparent"
-                disabled={isLoading}
-              />
+            <form onSubmit={handleSubmit} className="bg-accent/30 flex w-full flex-col rounded-xl p-3 pb-3">
+              <Textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleSubmit(e as unknown as React.FormEvent); } }} placeholder="Ask whatever you want to be" className="h-[2rem] resize-none rounded-none border-none bg-transparent px-0 py-1 shadow-none ring-0 focus-visible:ring-0 dark:bg-transparent" disabled={isLoading} />
               <div className="mt-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={toggleMode}
-                    className="text-xs"
-                  >
-                    {modeOfChatting === "text"
-                      ? "Switch to Voice"
-                      : "Switch to Text"}
+                  <Button variant="ghost" size="sm" onClick={toggleMode} className="text-xs">
+                    {modeOfChatting === "text" ? "Switch to Voice" : "Switch to Text"}
                   </Button>
                   {modeOfChatting === "voice" && (
                     <div className="bg-accent flex size-8 items-center justify-center rounded-lg border">
-                      <button
-                        type="button"
-                        aria-label="Toggle voice input"
-                        onClick={
-                          listening ? handleStopListening : handleStartListening
-                        }
-                        disabled={!browserSupportsSpeechRecognition}
-                      >
-                        <MicrophoneIcon
-                          weight="bold"
-                          className={`text-foreground hover:text-primary size-4 cursor-pointer ${
-                            listening ? "animate-pulse text-red-500" : ""
-                          }`}
-                        />
+                      <button type="button" aria-label="Toggle voice input" onClick={listening ? handleStopListening : handleStartListening} disabled={!browserSupportsSpeechRecognition}>
+                        <MicrophoneIcon weight="bold" className={`text-foreground hover:text-primary size-4 cursor-pointer ${listening ? "animate-pulse text-red-500" : ""}`} />
                       </button>
                     </div>
                   )}
-                  <ModelSelector
-                    value={model}
-                    onValueChange={setModel}
-                    disabled={isLoading}
-                  />
-
-                   {/* Search */}
-                   <Button variant="ghost" size="sm" className={`text-xs ${search ? "bg-primary/60 hover:bg-primary/70" : ""}`} onClick={() => setSearch(!search)}>
-                    <Globe className="size-4" />
-                    Search
+                  <ModelSelector value={model} onValueChange={setModel} disabled={isLoading} />
+                  <Button variant="ghost" size="sm" className={`text-xs ${search ? "bg-primary/60 hover:bg-primary/70" : ""}`} onClick={() => setSearch(!search)}>
+                    <Globe className="size-4" /> Search
                   </Button>
-
-                  {/* Attachments */}
                   <Button variant="ghost" size="sm" className="text-xs" onClick={handleFileInput}>
                     <Paperclip className="size-4" />
                   </Button>
                 </div>
-                <Button
-                  type="submit"
-                  className="w-fit"
-                  disabled={isLoading || !input.trim()}
-                >
-                  {isLoading ? (
-                    <SpinnerGapIcon className="animate-spin" />
-                  ) : (
-                    "Send"
-                  )}
+                <Button type="submit" className="w-fit" disabled={isLoading || !input.trim()}>
+                  {isLoading ? <SpinnerGapIcon className="animate-spin" /> : "Send"}
                 </Button>
               </div>
             </form>

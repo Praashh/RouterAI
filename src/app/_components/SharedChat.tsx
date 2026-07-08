@@ -1,31 +1,12 @@
 "use client";
-import React, { useState, useRef, useEffect } from "react";
-import {
-  CopyIcon,
-  ThumbsDownIcon,
-  ThumbsUpIcon,
-  SpeakerHighIcon,
-  SpeakerXIcon,
-  CheckIcon,
-  CheckCircleIcon,
-} from "@phosphor-icons/react";
-import ReactMarkdown from "react-markdown";
-import SyntaxHighlighter from "react-syntax-highlighter";
-import remarkGfm from "remark-gfm";
-import { Geist_Mono } from "next/font/google";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useSpeechSynthesis } from "react-speech-kit";
 import { useTheme } from "next-themes";
-import { Loader2Icon, WrapText } from "lucide-react";
-import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
-import { api } from "@/trpc/react";
-
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  preload: true,
-  display: "swap",
-});
+import { Loader2Icon } from "lucide-react";
+import { api } from "@/trpc/client";
+import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
+import { MessageActions } from "@/components/chat/MessageActions";
 
 interface ChatMessage {
   id: string;
@@ -33,15 +14,14 @@ interface ChatMessage {
   content: string;
 }
 
-
 const SharedChat = ({ chatId: initialChatId }: { chatId: string }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [copied, setCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { resolvedTheme } = useTheme();
   const [chatId, setChatId] = useState<string>(initialChatId);
+  const [isWrapped, setIsWrapped] = useState(false);
 
-  const {data: chatMessages} = api.chat.getChatById.useQuery({
+  const { data: chatMessages } = api.chat.getChatById.useQuery({
     chatId: chatId,
   });
 
@@ -49,17 +29,16 @@ const SharedChat = ({ chatId: initialChatId }: { chatId: string }) => {
     setChatId(initialChatId);
   }, [initialChatId]);
 
-  useEffect(() => {
-    if (chatMessages) {
-      setMessages(chatMessages.messages.map((message) => ({
+  // Derive messages directly from query data instead of copying into state
+  const messages: ChatMessage[] = useMemo(
+    () =>
+      chatMessages?.messages.map((message) => ({
         id: message.id,
-        role: message.role === "USER" ? "user" : "assistant",
+        role: message.role === "USER" ? ("user" as const) : ("assistant" as const),
         content: message.content,
-      })));
-    }
-  }, [chatMessages]);
-
-
+      })) ?? [],
+    [chatMessages],
+  );
 
   const {
     speak,
@@ -77,30 +56,27 @@ const SharedChat = ({ chatId: initialChatId }: { chatId: string }) => {
     }
   }, [voices, ttsSupported]);
 
-
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-
-
-
-  const handleCopy = async (content: string) => {
+  const handleCopy = async (content: string, id?: string) => {
     try {
       await navigator.clipboard.writeText(content);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000); // Reset after 2s
+      setCopiedId(id ?? content);
+      setTimeout(() => setCopiedId(null), 2000);
     } catch (err) {
       console.error("Failed to copy: ", err);
     }
   };
 
+  const toggleWrap = () => setIsWrapped((prev) => !prev);
 
+  const handleSpeak = (text: string) => {
+    if (ttsSupported && selectedVoiceRef.current) {
+      speak({ text, voice: selectedVoiceRef.current });
+    }
+  };
 
   return (
     <div className="h-[96vh] w-full">
@@ -109,7 +85,7 @@ const SharedChat = ({ chatId: initialChatId }: { chatId: string }) => {
           <div className="mx-auto w-full max-w-4xl py-4">
             {messages.length === 0 ? (
               <div className="text-muted-foreground flex h-[50vh] items-center justify-center">
-                  <Loader2Icon className="animate-spin" />                
+                <Loader2Icon className="animate-spin" />
               </div>
             ) : (
               <div className="no-scrollbar mt-6 flex h-full w-full flex-1 flex-col gap-4 overflow-y-auto px-4 pt-4 pb-10 md:px-8">
@@ -127,193 +103,26 @@ const SharedChat = ({ chatId: initialChatId }: { chatId: string }) => {
                             : "w-full p-0",
                         )}
                       >
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            code(props) {
-                              const { children, className, ...rest } = props;
-                              const match = /language-(\w+)/.exec(
-                                className ?? "",
-                              );
-                              const isInline = !match;
-                              const codeContent = Array.isArray(children)
-                                ? children.join("")
-                                : typeof children === "string"
-                                  ? children
-                                  : "";
-
-                              return isInline ? (
-                                <code
-                                  className={cn(
-                                    "bg-accent rounded-sm px-1 py-0.5 text-sm",
-                                    geistMono.className,
-                                  )}
-                                  {...rest}
-                                >
-                                  {children}
-                                </code>
-                              ) : (
-                                <div
-                                  className={`${geistMono.className} my-4 overflow-hidden rounded-md`}
-                                >
-                                  <div className="bg-accent flex items-center justify-between px-4 py-2 text-sm">
-                                    <div>{match ? match[1] : "text"}</div>
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        type="button"
-                                        className={`hover:bg-muted/40 flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all duration-200`}
-                                        aria-label="Toggle line wrapping"
-                                      >
-                                        <WrapText className="h-3 w-3" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleCopy(codeContent)}
-                                        className={`hover:bg-muted/40 sticky top-10 flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all duration-200`}
-                                        aria-label="Copy code"
-                                      >
-                                        {copied ? (
-                                          <>
-                                            <CheckCircleIcon
-                                              weight="bold"
-                                              className="size-4"
-                                            />
-                                          </>
-                                        ) : (
-                                          <>
-                                            <CopyIcon className="size-4" />
-                                          </>
-                                        )}
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <SyntaxHighlighter
-                                    language={match ? match[1] : "text"}
-                                    style={atomOneDark}
-                                    customStyle={{
-                                      margin: 0,
-                                      padding: "1rem",
-                                      backgroundColor:
-                                        resolvedTheme === "dark"
-                                          ? "#141414"
-                                          : "#f5f5f5",
-                                      color:
-                                        resolvedTheme === "dark"
-                                          ? "#e5e5e5"
-                                          : "#171717",
-                                      borderRadius: 0,
-                                      borderBottomLeftRadius: "0.375rem",
-                                      borderBottomRightRadius: "0.375rem",
-                                      fontSize: "1.2rem",
-                                      fontFamily: `var(--font-geist-mono), ${geistMono.style.fontFamily}`,
-                                    }}
-                                    codeTagProps={{
-                                      style: {
-                                        fontFamily: `var(--font-geist-mono), ${geistMono.style.fontFamily}`,
-                                        fontSize: "0.85em",
-                                        whiteSpace: "pre-wrap",
-                                        overflowWrap: "break-word",
-                                        wordBreak: "break-word",
-                                      },
-                                    }}
-                                    PreTag="div"
-                                  >
-                                    {codeContent}
-                                  </SyntaxHighlighter>
-                                </div>
-                              );
-                            },
-                            strong: (props) => (
-                              <span className="font-bold">
-                                {props.children}
-                              </span>
-                            ),
-                            a: (props) => (
-                              <a
-                                className="text-primary underline"
-                                href={props.href}
-                              >
-                                {props.children}
-                              </a>
-                            ),
-                            h1: (props) => (
-                              <h1 className="my-4 text-2xl font-bold">
-                                {props.children}
-                              </h1>
-                            ),
-                            h2: (props) => (
-                              <h2 className="my-3 text-xl font-bold">
-                                {props.children}
-                              </h2>
-                            ),
-                            h3: (props) => (
-                              <h3 className="my-2 text-lg font-bold">
-                                {props.children}
-                              </h3>
-                            ),
-                          }}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
+                        <MarkdownRenderer
+                          content={message.content}
+                          isWrapped={isWrapped}
+                          onToggleWrap={toggleWrap}
+                          copiedId={copiedId}
+                          onCopy={handleCopy}
+                          resolvedTheme={resolvedTheme}
+                        />
                       </div>
                       <div className="font-medium">
-                        {message.role === "assistant" && (
-                          <div className="invisible flex w-fit items-center gap-2 text-base font-semibold group-hover:visible">
-                            <button type="button" aria-label="Like response" className="hover:bg-accent flex size-7 items-center justify-center rounded-lg">
-                              <ThumbsUpIcon weight="bold" />
-                            </button>
-                            <button type="button" aria-label="Dislike response" className="hover:bg-accent flex size-7 items-center justify-center rounded-lg">
-                              <ThumbsDownIcon weight="bold" />
-                            </button>
-                            <button
-                              type="button"
-                              aria-label="Copy message"
-                              onClick={() => handleCopy(message.content)}
-                              className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
-                            >
-                              {!copied ? (
-                                <CopyIcon weight="bold" />
-                              ) : (
-                                <CheckIcon weight="bold" />
-                              )}
-                            </button>
-                              <button
-                                type="button"
-                                aria-label={speaking ? "Stop reading" : "Read aloud"}
-                                className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
-                                onClick={() => {
-                                  if (speaking) {
-                                    cancel();
-                                  } else if (ttsSupported && selectedVoiceRef.current) {
-                                    speak({
-                                      text: message.content,
-                                      voice: selectedVoiceRef.current,
-                                    });
-                                  }
-                                }}
-                              >
-                                {speaking ? (
-                                  <SpeakerXIcon weight="bold" />
-                                ) : (
-                                  <SpeakerHighIcon weight="bold" />
-                                )}
-                              </button>     
-                          </div>
-                        )}
-                        {message.role === "user" && (
-                          <button
-                            type="button"
-                            aria-label="Copy message"
-                            onClick={() => handleCopy(message.content)}
-                            className="hover:bg-accent flex size-7 items-center justify-center rounded-lg"
-                          >
-                            {!copied ? (
-                              <CopyIcon weight="bold" />
-                            ) : (
-                              <CheckIcon weight="bold" />
-                            )}
-                          </button>
-                        )}
+                        <MessageActions
+                          role={message.role}
+                          messageId={message.id}
+                          content={message.content}
+                          copiedId={copiedId}
+                          onCopy={handleCopy}
+                          speaking={speaking}
+                          onSpeak={handleSpeak}
+                          onCancelSpeak={cancel}
+                        />
                       </div>
                     </div>
                   ))}

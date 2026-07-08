@@ -1,7 +1,7 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { api } from "@/trpc/react";
+import { api } from "@/trpc/client";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
 import { Input } from "@/components/ui/input";

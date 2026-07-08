@@ -5,17 +5,11 @@ import { Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { useFont } from "@/contexts/font-context";
+import { VisualOptions } from "./VisualOptions";
 import { useBlur } from "@/contexts/blur-context";
-import { api } from "@/trpc/react";
+import { api } from "@/trpc/client";
 import { toast, Toaster } from "sonner";
 import { useRouter } from "next/navigation";
 import { FetchUser } from "@/actions/fetchUser";
@@ -30,13 +24,6 @@ const predefinedTraits = [
   "patient",
 ] as const;
 
-const fonts = [
-  { value: "proxima", label: "Proxima Vara" },
-  { value: "inter", label: "Inter" },
-  { value: "geist", label: "Geist" },
-  { value: "playfair", label: "Playfair Display" },
-  { value: "roboto", label: "Roboto" },
-] as const;
 
 export const Customisation = () => {
   const router = useRouter();
@@ -277,79 +264,14 @@ export const Customisation = () => {
             <Button className="ml-auto" onClick={handleSavePreferences}>Save Preferences</Button>
           </div>
 
-          {/* Visual Options Section */}
-          <div className="border-border mt-12">
-            <h2 className="text-foreground text-xl font-semibold">
-              Visual Options
-            </h2>
-
-            <div className="mt-6 flex flex-col gap-8">
-              {/* Font Selection */}
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-foreground text-base font-semibold">
-                    Font Family
-                  </div>
-                  <div className="text-muted-foreground text-sm">
-                    Choose your preferred font for the application.
-                  </div>
-                </div>
-                <Select value={selectedFont} onValueChange={setSelectedFont}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select font">
-                      <span className={`font-${selectedFont}`}>
-                        {fonts.find((f) => f.value === selectedFont)?.label}
-                      </span>
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {fonts.map((font) => (
-                      <SelectItem key={font.value} value={font.value}>
-                        <span className={`font-${font.value}`}>
-                          {font.label}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Boring Theme Switch */}
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-foreground text-base font-semibold">
-                    Boring Theme
-                  </div>
-                  <div className="text-muted-foreground text-sm">
-                    If you think the pink is too much, turn this on to tone it
-                    down.
-                  </div>
-                </div>
-                <Switch
-                  checked={isBoringTheme}
-                  onCheckedChange={setIsBoringTheme}
-                />
-              </div>
-              {/* Hide Personal Information Switch */}
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-foreground text-base font-semibold">
-                    Hide Personal Information
-                  </div>
-                  <div className="text-muted-foreground text-sm">
-                    Hides your name and email from the UI.
-                  </div>
-                </div>
-                <Switch
-                  checked={isBlurred}
-                  onCheckedChange={(checked) => {
-                    console.log("Switch changed to:", checked);
-                    setIsBlurred(checked);
-                  }}
-                />
-              </div>
-            </div>
-          </div>
+          <VisualOptions
+            selectedFont={selectedFont}
+            onFontChange={setSelectedFont}
+            isBoringTheme={isBoringTheme}
+            onBoringThemeChange={setIsBoringTheme}
+            isBlurred={isBlurred}
+            onBlurChange={setIsBlurred}
+          />
         </div>
       </div>
       <Toaster />

@@ -2,6 +2,7 @@ import { auth } from "@/server/auth";
 import { fetchChatCompletion } from "@/models/service";
 import { DEFAULT_MODEL_ID, getModelById } from "@/models/constants";
 import { db } from "@/server/db";
+import { getApiKeyFromCookies } from "@/lib/api-key-cookies";
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -12,7 +13,6 @@ interface ChatPayload {
   messages: ChatMessage[];
   model?: string;
   chatId: string;
-  userApiKey?: string;
 }
 
 interface ChatErrorResponse {
@@ -32,7 +32,7 @@ export async function POST(req: Request): Promise<Response> {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const { messages, model = DEFAULT_MODEL_ID, chatId, userApiKey } =
+    const { messages, model = DEFAULT_MODEL_ID, chatId } =
       (await req.json()) as ChatPayload;
 
     const userContent = messages[messages.length - 1]?.content ?? "";
@@ -62,6 +62,11 @@ export async function POST(req: Request): Promise<Response> {
         { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
+
+    // Read user API key from HttpOnly cookie if needed
+    const userApiKey = modelInfo.requiresApiKey
+      ? await getApiKeyFromCookies(modelInfo.provider)
+      : undefined;
 
     // Call the model FIRST so we can return a proper HTTP error if it fails
     let modelResponse: Response;

@@ -2,12 +2,12 @@ import { auth } from "@/server/auth";
 import { getModelById } from "@/models/constants";
 import { ModelProvider } from "@/models/types";
 import { db } from "@/server/db";
+import { getApiKeyFromCookies } from "@/lib/api-key-cookies";
 
 interface ImagePayload {
   prompt: string;
   model: string;
   chatId: string;
-  userApiKey?: string;
 }
 
 interface DallEResponse {
@@ -129,7 +129,7 @@ export async function POST(req: Request): Promise<Response> {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const { prompt, model, chatId, userApiKey } =
+    const { prompt, model, chatId } =
       (await req.json()) as ImagePayload;
 
     if (!prompt?.trim()) {
@@ -144,9 +144,11 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
+    // Read user API key from HttpOnly cookie
+    const userApiKey = await getApiKeyFromCookies(modelInfo.provider);
     if (!userApiKey) {
       return Response.json(
-        { error: "API key is required for image generation" },
+        { error: "API key is required for image generation. Please add your key in the model selector." },
         { status: 400 },
       );
     }

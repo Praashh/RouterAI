@@ -5,10 +5,7 @@ import Turnstile from "react-turnstile";
 import { toast } from "sonner";
 
 const AskPage = () => {
-  const [token, setToken] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem("turnstileToken");
-  });
+  const [token, setToken] = useState<string | null>(null);
   return (
     <div className="flex w-full max-w-screen flex-col items-center justify-center gap-4">
       <div className="flex w-full flex-col items-center gap-4">
@@ -18,7 +15,6 @@ const AskPage = () => {
               sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
               onVerify={(token) => {
                 setToken(token);
-                localStorage.setItem("turnstileToken", token);
                 toast.success("Verification successful", {
                   description: "You can now ask a question",
                 });

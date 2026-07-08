@@ -1,54 +1,43 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { ModelProvider } from "@/models/types";
-
-const STORAGE_KEY = "routerai-api-keys:v1";
-
-type ProviderKeys = Partial<Record<ModelProvider, string>>;
+import { useState, useCallback, useEffect, useTransition } from "react";
+import { type ModelProvider } from "@/models/types";
+import {
+  saveApiKeyCookie,
+  removeApiKeyCookie,
+  getApiKeyProviders,
+} from "@/actions/api-keys";
 
 export function useApiKeys() {
-  const [keys, setKeys] = useState<ProviderKeys>(() => {
-    if (typeof window === "undefined") return {};
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) return JSON.parse(stored) as ProviderKeys;
-    } catch {
-      // ignore parse errors
-    }
-    return {};
-  });
+  const [providers, setProviders] = useState<Set<ModelProvider>>(new Set());
+  const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    void getApiKeyProviders().then((ps) => setProviders(new Set(ps)));
+  }, []);
 
   const saveKey = useCallback((provider: ModelProvider, apiKey: string) => {
-    setKeys((prev) => {
-      const next = { ...prev, [provider]: apiKey };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      return next;
+    setProviders((prev) => new Set(prev).add(provider));
+    startTransition(() => {
+      void saveApiKeyCookie(provider, apiKey);
     });
   }, []);
 
   const removeKey = useCallback((provider: ModelProvider) => {
-    setKeys((prev) => {
-      const next = { ...prev };
-      delete next[provider];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    setProviders((prev) => {
+      const next = new Set(prev);
+      next.delete(provider);
       return next;
+    });
+    startTransition(() => {
+      void removeApiKeyCookie(provider);
     });
   }, []);
 
-  const getKey = useCallback(
-    (provider: ModelProvider): string | undefined => {
-      return keys[provider];
-    },
-    [keys],
-  );
-
   const hasKey = useCallback(
-    (provider: ModelProvider): boolean => {
-      return !!keys[provider];
-    },
-    [keys],
+    (provider: ModelProvider): boolean => providers.has(provider),
+    [providers],
   );
 
-  return { keys, saveKey, removeKey, getKey, hasKey };
+  return { saveKey, removeKey, hasKey };
 }

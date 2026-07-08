@@ -18,7 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { api } from "@/trpc/react";
+import { api } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import Link from "next/link";

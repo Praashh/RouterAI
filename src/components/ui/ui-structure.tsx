@@ -7,44 +7,21 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
-import { Geist } from "next/font/google";
 import { Button } from "./button";
-import { api } from "@/trpc/react";
-import { useState } from "react";
-import { useEffect } from "react";
+import { api } from "@/trpc/client";
+import { useState, useMemo } from "react";
 import { Input } from "./input";
-import {
-  BookmarkIcon,
-  DotsThreeVertical,
-  MagnifyingGlassIcon,
-  ShareFatIcon,
-  TrashIcon,
-} from "@phosphor-icons/react";
+import { MagnifyingGlassIcon } from "@phosphor-icons/react";
 import { Separator } from "./separator";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { RouterAILogo } from "../svgs/t3chat";
-import type { User } from "@prisma/client";
 import { useSession } from "next-auth/react";
-import { Share, ShareIcon } from "lucide-react";
 import Image from "next/image";
-
-const giest = Geist({
-  display: "swap",
-  subsets: ["latin"],
-});
+import { ChatListItem } from "./ChatListItem";
 
 interface Chat {
   id: string;
@@ -52,81 +29,88 @@ interface Chat {
   modelId: string | null;
   updatedAt: Date;
   isSaved: boolean;
-  messages: {
-    content: string;
-  }[];
-}
-
-function getChatDisplayTitle(chat: Chat) {
-  if (chat.title) return chat.title.length > 30 ? chat.title.slice(0, 30) + "..." : chat.title;
-  if (chat.messages[0]?.content) return chat.messages[0].content.slice(0, 30) + "...";
-  return "New Chat";
+  messages: { content: string }[];
 }
 
 export function UIStructure() {
   const [hoverChatId, setHoverChatId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const queryInput = searchQuery ? { search: searchQuery } : {};
-  const { data: chatsData, isLoading: chatsLoading } = api.chat.getAllChats.useQuery(
-    queryInput,
-    { refetchOnWindowFocus: true },
-  );
+  const { data: chatsData, isLoading: chatsLoading } =
+    api.chat.getAllChats.useQuery(queryInput, { refetchOnWindowFocus: true });
   const saveChat = api.chat.saveChat.useMutation();
   const removeFromSaved = api.chat.removeFromSaved.useMutation();
   const deleteChat = api.chat.deleteChat.useMutation();
   const utils = api.useUtils();
   const router = useRouter();
 
-  const chats = (chatsData?.chats ?? chatsData ?? []) as unknown as Chat[];
+  // Derive saved and unsaved lists in a single pass from query data
+  const { savedChats, recentChats } = useMemo(() => {
+    const allChats = (chatsData?.chats ?? chatsData ?? []) as unknown as Chat[];
+    const saved: Chat[] = [];
+    const recent: Chat[] = [];
+    for (const chat of allChats) {
+      if (chat.isSaved) saved.push(chat);
+      else recent.push(chat);
+    }
+    return { savedChats: saved, recentChats: recent };
+  }, [chatsData]);
 
   const handleSaveChat = (chatId: string) => {
-    saveChat.mutate({ chatId }, {
-      onSuccess: () => {
-        toast.success("Chat saved successfully");
-        void utils.chat.getAllChats.invalidate();
+    saveChat.mutate(
+      { chatId },
+      {
+        onSuccess: () => {
+          toast.success("Chat saved successfully");
+          void utils.chat.getAllChats.invalidate();
+        },
+        onError: (error) => console.error("Error saving chat:", error),
       },
-      onError: (error) => {
-        console.error("Error saving chat:", error);
-      },
-    });
+    );
   };
 
   const handleRemoveFromSaved = (chatId: string) => {
-    removeFromSaved.mutate({ chatId }, {
-      onSuccess: () => {
-        toast.success("Chat removed from saved successfully");
-        void utils.chat.getAllChats.invalidate();
+    removeFromSaved.mutate(
+      { chatId },
+      {
+        onSuccess: () => {
+          toast.success("Chat removed from saved successfully");
+          void utils.chat.getAllChats.invalidate();
+        },
+        onError: (error) => console.error("Error removing chat from saved:", error),
       },
-      onError: (error) => {
-        console.error("Error removing chat from saved:", error);
-      },
-    });
+    );
   };
 
   const handleDeleteChat = (chatId: string) => {
-    deleteChat.mutate({ chatId }, {
-      onSuccess: () => {
-        toast.success("Chat deleted successfully");
-        void utils.chat.getAllChats.invalidate();
+    deleteChat.mutate(
+      { chatId },
+      {
+        onSuccess: () => {
+          toast.success("Chat deleted successfully");
+          void utils.chat.getAllChats.invalidate();
+        },
+        onError: (error) => console.error("Error deleting chat:", error),
       },
-      onError: (error) => {
-        console.error("Error deleting chat:", error);
-      },
-    });
+    );
   };
 
   const session = useSession();
   const user = session.data?.user;
 
+  const skeletonItems = Array.from({ length: 4 }).map((_, i) => (
+    <div key={i} className="bg-primary/15 mb-2 h-7 w-full animate-pulse rounded-md" />
+  ));
+
   return (
-    <Sidebar className={`border py-2 pl-2`}>
+    <Sidebar className="border py-2 pl-2">
       <SidebarContent className="rounded-2xl">
         <SidebarGroup className="flex flex-col gap-8 pt-3">
           <SidebarGroupLabel className="h-fit p-0">
             <div className="flex h-12 w-full flex-col items-center gap-2 rounded-lg">
               <div className="flex w-full items-center gap-2 rounded-lg p-1 text-lg">
                 <SidebarTrigger className="shrink-0" />
-                <div className="text-secondary flex size-4 w-full flex-1 items-center justify-center rounded-lg ml-2">
+                <div className="text-secondary ml-2 flex size-4 w-full flex-1 items-center justify-center rounded-lg">
                   <RouterAILogo />
                 </div>
                 <span className="size-6"></span>
@@ -136,11 +120,10 @@ export function UIStructure() {
                   e.preventDefault();
                   router.push("/ask");
                 }}
-                className="w-full text-secondary bg-primary"
+                className="text-secondary bg-primary w-full"
               >
                 New Chat
               </Button>
-              {/* <SidebarTrigger /> */}
             </div>
           </SidebarGroupLabel>
           <SidebarGroupContent className="mt-4">
@@ -163,84 +146,18 @@ export function UIStructure() {
             </SidebarGroupLabel>
             <SidebarMenu className="mt-2 p-0">
               {chatsLoading
-                ? // Skeleton loader while loading saved chats
-                  Array.from({ length: 4 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="bg-primary/15 mb-2 h-7 w-full animate-pulse rounded-md"
+                ? skeletonItems
+                : savedChats.map((chat) => (
+                    <ChatListItem
+                      key={chat.id}
+                      chat={chat}
+                      isHovered={chat.id === hoverChatId}
+                      onMouseEnter={() => setHoverChatId(chat.id)}
+                      onMouseLeave={() => setHoverChatId("")}
+                      onUnsave={handleRemoveFromSaved}
+                      onDelete={handleDeleteChat}
                     />
-                  ))
-                : chats
-                    ?.filter((chat: Chat) => chat.isSaved)
-                    .map((chat: Chat) => (
-                      <SidebarMenuItem key={chat.id}>
-                        <SidebarMenuButton
-                          className="group hover:bg-primary/20 relative"
-                          onMouseEnter={() => setHoverChatId(chat.id)}
-                          onMouseLeave={() => setHoverChatId("")}
-                          asChild
-                        >
-                          <div className="flex w-full items-center justify-between">
-                            <Link href={`/ask/${chat.id}`}>
-                              <span className="z-[-1]">
-                                {getChatDisplayTitle(chat)}
-                              </span>
-                              <div
-                                className={`absolute top-0 right-0 z-[5] h-full w-12 rounded-r-md blur-[2em] ${chat.id === hoverChatId ? "bg-primary" : ""}`}
-                              />
-                              <div
-                                className={`absolute top-1/2 -right-16 z-[10] flex h-full -translate-y-1/2 items-center justify-center gap-1.5 rounded-r-md bg-transparent px-1 backdrop-blur-xl transition-all duration-200 ease-in-out ${chat.id === hoverChatId ? "group-hover:right-0" : ""}`}
-                              >
-                                <button
-                                  type="button"
-                                  aria-label="Remove bookmark"
-                                  className="flex items-center justify-center rounded-md"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    handleRemoveFromSaved(chat.id);
-                                  }}
-                                >
-                                  <BookmarkIcon
-                                    weight="fill"
-                                    className="hover:text-foreground size-4"
-                                  />
-                                </button>
-                                <button
-                                  type="button"
-                                  aria-label="Copy share link"
-                                  className="flex items-center justify-center rounded-md"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    const shareLink = process.env.NEXT_PUBLIC_APP_URL + `/chat/share/${chat.id}`
-                                    navigator.clipboard.writeText(shareLink)
-                                    toast.success("Share link copied to clipboard")
-                                  }}
-                                >
-                                  <ShareFatIcon
-                                    weight="fill"
-                                    className="hover:text-foreground size-4"
-                                  />
-                                </button>
-                                <button
-                                  type="button"
-                                  aria-label="Delete chat"
-                                  className="flex items-center justify-center rounded-md"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    handleDeleteChat(chat.id);
-                                  }}
-                                >
-                                  <TrashIcon
-                                    weight="bold"
-                                    className="hover:text-foreground size-4"
-                                  />
-                                </button>
-                              </div>
-                            </Link>
-                          </div>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
+                  ))}
             </SidebarMenu>
 
             <Separator className="my-2" />
@@ -255,103 +172,18 @@ export function UIStructure() {
 
             <SidebarMenu className="mt-2 w-full p-0">
               {chatsLoading
-                ? // Skeleton loader while loading saved chats
-                  Array.from({ length: 4 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="bg-primary/15 mb-2 h-7 w-full animate-pulse rounded-md"
+                ? skeletonItems
+                : recentChats.map((chat) => (
+                    <ChatListItem
+                      key={chat.id}
+                      chat={chat}
+                      isHovered={chat.id === hoverChatId}
+                      onMouseEnter={() => setHoverChatId(chat.id)}
+                      onMouseLeave={() => setHoverChatId("")}
+                      onSave={handleSaveChat}
+                      onDelete={handleDeleteChat}
                     />
-                  ))
-                : chats
-                    ?.filter((chat: Chat) => !chat.isSaved)
-                    .map((chat: Chat) => (
-                      <SidebarMenuItem key={chat.id}>
-                        <SidebarMenuButton
-                          className="group hover:bg-primary/20 relative"
-                          onMouseEnter={() => setHoverChatId(chat.id)}
-                          onMouseLeave={() => setHoverChatId("")}
-                          asChild
-                        >
-                          <div className="flex w-full items-center justify-between">
-                            <Link href={`/ask/${chat.id}`}>
-                              <span className="z-[-1]">
-                                {getChatDisplayTitle(chat)}
-                              </span>
-                              <div
-                                className={`absolute top-0 right-0 z-[5] h-full w-12 rounded-r-md blur-[2em] ${chat.id === hoverChatId ? "bg-primary" : ""}`}
-                              />
-                              <div
-                                className={`absolute top-1/2 -right-16 z-[10] flex h-full -translate-y-1/2 items-center justify-center gap-1.5 rounded-r-md bg-transparent px-1 backdrop-blur-xl transition-all duration-200 ease-in-out ${chat.id === hoverChatId ? "group-hover:right-0" : ""}`}
-                              >
-                                <button
-                                  type="button"
-                                  aria-label="Save chat"
-                                  className="flex items-center justify-center rounded-md"
-                                  onClick={() => handleSaveChat(chat.id)}
-                                >
-                                  <BookmarkIcon
-                                    weight={"bold"}
-                                    className="hover:text-foreground size-4"
-                                  />
-                                </button>
-
-                                <button
-                                  type="button"
-                                  aria-label="Copy share link"
-                                  className="flex items-center justify-center rounded-md"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    const shareLink = process.env.NEXT_PUBLIC_APP_URL + `/chat/share/${chat.id}`
-                                    navigator.clipboard.writeText(shareLink)
-                                    toast.success("Share link copied to clipboard")
-                                  }}
-                                >
-                                  <ShareFatIcon
-                                    weight="fill"
-                                    className="hover:text-foreground size-4"
-                                  />
-                                </button>
-
-                                <button
-                                  type="button"
-                                  aria-label="Delete chat"
-                                  className="flex items-center justify-center rounded-md"
-                                  onClick={() => handleDeleteChat(chat.id)}
-                                >
-                                  <TrashIcon
-                                    weight={"bold"}
-                                    className="hover:text-foreground size-4"
-                                  />
-                                </button>
-                              </div>
-                              {/* <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                              >
-                                <DotsThreeVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => handleSaveChat(chat.id)}
-                              >
-                                Add to Saved
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteChat(chat.id)}
-                              >
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu> */}
-                            </Link>
-                          </div>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
+                  ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
