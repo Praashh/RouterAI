@@ -7,6 +7,7 @@ import { FontProvider } from "@/contexts/font-context";
 import { BlurProvider } from "@/contexts/blur-context";
 import { Toaster } from "sonner";
 import { siteConfig } from "@/config/site";
+import { Analytics } from "@vercel/analytics/next";
 export const metadata: Metadata = siteConfig;
 
 const proxima = localFont({
@@ -61,6 +62,7 @@ export default function RootLayout({
             </BlurProvider>
           </FontProvider>
         </TRPCReactProvider>
+        <Analytics />
       </body>
     </html>
   );
