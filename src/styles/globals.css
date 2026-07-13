@@ -310,10 +310,12 @@ html.boring-theme.dark {
 
 ::selection {
   background-color: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .dark::selection {
-  background-color: var(--accent);
+  background-color: var(--primary);
+  color: var(--primary-foreground);
 }
 
 @media (prefers-reduced-motion: reduce) {

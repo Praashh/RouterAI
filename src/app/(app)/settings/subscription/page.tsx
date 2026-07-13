@@ -20,7 +20,6 @@ import { History } from "@/components/subscription/history";
 
 export default async function SubscriptionPage() {
   const user = await FetchUser();
-  console.log(user);
   return (
     <div className="bg-background text-foreground min-h-screen w-full border">
       <div className="mx-auto w-full max-w-6xl p-8">
@@ -52,20 +51,6 @@ export default async function SubscriptionPage() {
               about={user?.about as string}
               plan={user?.subscription?.plan as string}
             />
-
-            <div className="space-y-1 pt-8">
-        <h2 className="text-xl font-bold text-white">Danger Zone</h2>
-        <p className="text-muted-foreground text-sm">
-          Permanently delete your account and all associated data.
-        </p>
-        <Button
-          variant="destructive"
-          className="mt-4 rounded-lg bg-red-600 px-6 py-2 font-medium text-white hover:bg-red-700"
-        >
-          Delete Account
-        </Button>
-      </div>
-
           </div>
 
           {/* Right Column - Tabs Section */}
@@ -80,10 +65,7 @@ export default async function SubscriptionPage() {
                   >
                     Account
                   </TabsTrigger>
-                  <TabsTrigger className="rounded-lg text-xs" value="history">
-                    History & Sync
-                  </TabsTrigger>
-                  <TabsTrigger className="rounded-lg text-xs" value="models">
+                 <TabsTrigger className="rounded-lg text-xs" value="models">
                     Models
                   </TabsTrigger>
                   <TabsTrigger className="rounded-lg text-xs" value="api-keys">
@@ -98,9 +80,6 @@ export default async function SubscriptionPage() {
       
               <TabsContent value="account">
                 <Customisation />
-              </TabsContent>
-              <TabsContent value="history">
-                <History />
               </TabsContent>
               <TabsContent value="models">
                 <Models />

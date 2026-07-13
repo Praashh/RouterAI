@@ -53,21 +53,6 @@ export async function POST(req: NextRequest): Promise<Response> {
       );
     }
 
-    // Save user message
-    await db.message.create({
-      data: {
-        chatId,
-        content: userContent,
-        role: "USER",
-      },
-    });
-    if (!chat.title && userContent) {
-      await db.chat.update({
-        where: { id: chatId },
-        data: { title: userContent.slice(0, 100) },
-      });
-    }
-
     const modelInfo = getModelById(model);
     if (!modelInfo) {
       return new Response(
@@ -81,7 +66,23 @@ export async function POST(req: NextRequest): Promise<Response> {
       ? req.cookies.get(`${COOKIE_PREFIX}${modelInfo.provider}`)?.value
       : undefined;
 
-    // Call the model FIRST so we can return a proper HTTP error if it fails
+    // Start DB writes in parallel with the LLM call to reduce time-to-first-byte.
+    // The LLM reads messages from the request body, not the DB, so this is safe.
+    const saveUserMessage = db.message.create({
+      data: {
+        chatId,
+        content: userContent,
+        role: "USER",
+      },
+    });
+    // Title update is non-critical — fire and forget
+    if (!chat.title && userContent) {
+      void db.chat.update({
+        where: { id: chatId },
+        data: { title: userContent.slice(0, 100) },
+      });
+    }
+
     let modelResponse: Response;
     try {
       modelResponse = await fetchChatCompletion({
@@ -100,6 +101,9 @@ export async function POST(req: NextRequest): Promise<Response> {
         { status: 502, headers: { "Content-Type": "application/json" } },
       );
     }
+
+    // Ensure user message is persisted before we start streaming
+    await saveUserMessage;
 
     if (!modelResponse.ok) {
       // Forward the upstream error status and body to the client
@@ -155,18 +159,19 @@ export async function POST(req: NextRequest): Promise<Response> {
             if (done) {
               // Save AI message to database after stream completes
               if (accumulatedContent.trim()) {
-                await db.message.create({
-                  data: {
-                    chatId,
-                    content: accumulatedContent,
-                    role: "ASSISTANT",
-                  },
-                });
-                // Update chat timestamp so sidebar ordering stays correct
-                await db.chat.update({
-                  where: { id: chatId },
-                  data: { updatedAt: new Date() },
-                });
+                await Promise.all([
+                  db.message.create({
+                    data: {
+                      chatId,
+                      content: accumulatedContent,
+                      role: "ASSISTANT",
+                    },
+                  }),
+                  db.chat.update({
+                    where: { id: chatId },
+                    data: { updatedAt: new Date() },
+                  }),
+                ]);
               }
 
               await writer.write(encoder.encode("data: [DONE]\n\n"));

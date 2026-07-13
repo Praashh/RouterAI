@@ -34,7 +34,7 @@ function handleStopListening() {
 
 const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
   const { modelId: model, setModelId: setModel } = useModel();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [localMessages, setMessages] = useState<ChatMessage[]>([]);
   const [search, setSearch] = useState(false);
   const [input, setInput] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -69,24 +69,28 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
     onScroll: scrollToBottom,
   });
 
-  const { data: chatMessages } = api.chat.getChatMessages.useQuery({ chatId });
+  const { data: chatMessages, isLoading: isQueryLoading } = api.chat.getChatMessages.useQuery({ chatId });
+
+  // Derive display messages: prefer local state (during/after streaming),
+  // fall back to server data so cached queries render instantly without a loader flash
+  const messages = localMessages.length > 0
+    ? localMessages
+    : (chatMessages?.messages.map((m) => ({
+        id: m.id,
+        role: m.role === "USER" ? ("user" as const) : ("assistant" as const),
+        content: m.content,
+      })) ?? []);
 
   useEffect(() => {
     setChatId(initialChatId);
+    setMessages([]);
   }, [initialChatId]);
 
   useEffect(() => {
-    if (chatMessages) {
-      setMessages(
-        chatMessages.messages.map((message) => ({
-          id: message.id,
-          role: message.role === "USER" ? ("user" as const) : ("assistant" as const),
-          content: message.content,
-        })),
-      );
+    if (chatMessages && localMessages.length === 0) {
       requestAnimationFrame(scrollToBottom);
     }
-  }, [chatMessages, scrollToBottom]);
+  }, [chatMessages, localMessages.length, scrollToBottom]);
 
   const toggleWrap = useCallback(() => setIsWrapped((prev) => !prev), []);
 
@@ -208,7 +212,7 @@ const Chat = ({ chatId: initialChatId }: { chatId: string }) => {
       <div className="relative flex h-full w-full flex-col">
         <div className="no-scrollbar flex flex-1 flex-col overflow-y-auto px-4 pb-40 md:px-4">
           <div className="mx-auto w-full max-w-4xl py-4">
-            {messages.length === 0 ? (
+            {messages.length === 0 && isQueryLoading ? (
               <div className="text-muted-foreground flex h-[50vh] items-center justify-center">
                 <Loader2Icon className="animate-spin" />
               </div>

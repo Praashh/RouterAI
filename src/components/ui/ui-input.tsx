@@ -10,7 +10,6 @@ import TabsSuggestion from "@/components/ui/tabs-suggestion";
 import { ModelSelector } from "@/components/ui/model-selector";
 import { useModel } from "@/hooks/use-model";
 import { useStreamChat } from "@/hooks/use-stream-chat";
-import { useRouter } from "next/navigation";
 import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
 import { useSpeechSynthesis } from "react-speech-kit";
 import { toast } from "sonner";
@@ -32,7 +31,6 @@ function handleStopListening() {
 
 const UIInput = () => {
   const session = useSession();
-  const router = useRouter();
   const { modelId: model, setModelId: setModel } = useModel();
   const [modeOfChatting, setModeOfChatting] = useState<"text" | "voice">("text");
   const [query, setQuery] = useState("");
@@ -113,6 +111,8 @@ const UIInput = () => {
         const result = await createChat.mutateAsync();
         chatId = result.chatId!;
         currentChatIdRef.current = chatId;
+        // Update URL immediately without triggering navigation or component remount
+        window.history.replaceState(null, "", `/ask/${chatId}`);
       }
 
       const allMessages = [...messages, userMessage];
@@ -124,7 +124,6 @@ const UIInput = () => {
           if (modeOfChatting === "voice" && ttsSupported && selectedVoice && content) {
             speak({ text: content, voice: selectedVoice });
           }
-          router.push(`/ask/${chatId}`);
         } catch (error) {
           if ((error as Error).name !== "AbortError") console.error("Error:", error);
           setIsLoading(false);
