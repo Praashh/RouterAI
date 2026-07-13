@@ -1,17 +1,20 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { db } from "@/server/db";
 import { ArrowUpRightIcon } from "@phosphor-icons/react/dist/ssr";
 import Image from "next/image";
 import Link from "next/link";
 import { DashboardImage } from "./dashboard-image";
 
-export default function Hero() {
+export default async function Hero() {
+  const userCount = await db.user.count();
+
   return (
     <div className="flex h-fit flex-col items-center gap-4">
       <div className="mt-32 flex flex-col items-center gap-2">
         <Badge variant={"outline"} className="mb-4">
           <div className="bg-primary text-primary size-2 animate-pulse rounded-full" />
-          Always up 24/7
+          {userCount.toLocaleString()} {userCount === 1 ? "user" : "users"} on the platform
         </Badge>
         <div className="max-w-xl text-center text-5xl font-bold text-balance md:text-5xl">
           Your Extra-Ordinary AI chat app.
