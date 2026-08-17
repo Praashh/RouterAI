@@ -3,10 +3,10 @@ import { type Model, ModelCapability, ModelProvider } from "./types";
 export const MODELS: Model[] = [
   // === GROQ FREE TIER ===
   {
-    id: "llama-3.3-70b-versatile",
-    name: "Llama 3.3 70B",
+    id: "openai/gpt-oss-120b",
+    name: "GPT OSS 120B",
     provider: ModelProvider.GROQ,
-    description: "Meta's powerful open-source model via Groq - fast and free",
+    description: "OpenAI's open-weight MoE model via Groq - fast and free",
     maxTokens: 131072,
     pricePer1kTokens: 0,
     capabilities: [
@@ -17,13 +17,17 @@ export const MODELS: Model[] = [
     isAvailable: true,
   },
   {
-    id: "llama-3.1-8b-instant",
-    name: "Llama 3.1 8B Instant",
+    id: "qwen/qwen3.6-27b",
+    name: "Qwen 3.6 27B",
     provider: ModelProvider.GROQ,
-    description: "Lightning-fast small model for quick tasks - free",
+    description: "Alibaba's fast multimodal model via Groq - free",
     maxTokens: 131072,
     pricePer1kTokens: 0,
-    capabilities: [ModelCapability.TEXT, ModelCapability.CODE],
+    capabilities: [
+      ModelCapability.TEXT,
+      ModelCapability.CODE,
+      ModelCapability.FUNCTION_CALLING,
+    ],
     isAvailable: true,
   },
   {
@@ -178,7 +182,7 @@ export const MODELS: Model[] = [
   },
 ];
 
-export const DEFAULT_MODEL_ID = "llama-3.3-70b-versatile";
+export const DEFAULT_MODEL_ID = "openai/gpt-oss-120b";
 
 export const getModelById = (id: string): Model | undefined => {
   return MODELS.find((model) => model.id === id);
